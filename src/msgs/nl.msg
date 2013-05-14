@@ -374,3 +374,15 @@
 {"You need an x:data capable client to search","U hebt een client nodig die x:data ondersteunt om te zoeken"}.
 {"Your contact offline message queue is full. The message has been discarded.","Te veel offline berichten voor dit contactpersoon. Het bericht is niet opgeslagen."}.
 {"Your messages to ~s are being blocked. To unblock them, visit ~s","Uw berichten aan ~s worden geblokkeerd. Om ze te deblokkeren, ga naar ~s"}.
+% mod_logdb
+{"Users Messages", "Gebruikersberichten"}.
+{"Date", "Datum"}.
+{"Count", "Aantal"}.
+{"Logged messages for ", "Gelogde berichten van "}.
+{" at ", " op "}.
+{"No logged messages for ", "Geen gelogde berichten van "}.
+{"Date, Time", "Datum en tijd"}.
+{"Direction: Jid", "Richting: Jabber ID"}.
+{"Subject", "Onderwerp"}.
+{"Body", "Berichtveld"}.
+{"Messages", "Berichten"}.

@@ -406,3 +406,31 @@
 {"Your Jabber account was successfully created.","Ваш Jabber-аккаунт был успешно создан."}.
 {"Your Jabber account was successfully deleted.","Ваш Jabber-аккаунт был успешно удален."}.
 {"Your messages to ~s are being blocked. To unblock them, visit ~s","Ваши сообщения к ~s блокируются. Для снятия блокировки перейдите по ссылке ~s"}.
+% mod_logdb.erl
+{"Users Messages", "Сообщения пользователей"}.
+{"Date", "Дата"}.
+{"Count", "Количество"}.
+{"Logged messages for ", "Сохранённые cообщения для "}.
+{" at ", " за "}.
+{"No logged messages for ", "Отсутствуют сообщения для "}.
+{"Date, Time", "Дата, Время"}.
+{"Direction: Jid", "Направление: Jid"}.
+{"Subject", "Тема"}.
+{"Body", "Текст"}.
+{"Messages", "Сообщения"}.
+{"Filter Selected", "Отфильтровать выделенные"}.
+{"Do Not Log Messages", "Не сохранять сообщения"}.
+{"Log Messages", "Сохранять сообщения"}.
+{"Messages logging engine", "Система логирования сообщений"}.
+{"Default", "По умолчанию"}.
+{"Set logging preferences", "Задайте настройки логирования"}.
+{"Messages logging engine users", "Пользователи системы логирования сообщений"}.
+{"Messages logging engine settings", "Настройки системы логирования сообщений"}.
+{"Set run-time settings", "Задайте текущие настройки"}.
+{"Groupchat messages logging", "Логирование сообщений типа groupchat"}.
+{"Jids/Domains to ignore", "Игнорировать следующие jids/домены"}.
+{"Purge messages older than (days)", "Удалять сообщения старее чем (дни)"}.
+{"Poll users settings (seconds)", "Обновлять настройки пользователей через (секунд)"}.
+{"Drop", "Удалять"}.
+{"Do not drop", "Не удалять"}.
+{"Drop messages on user removal", "Удалять сообщения при удалении пользователя"}.
