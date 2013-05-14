@@ -179,9 +179,9 @@ handle_call({log_message, Msg}, _From, #state{dbref=DBRef, vhost=VHost}=State) -
                                                        Msg#msg.peer_name++"@"++Msg#msg.peer_server]),
                increment_user_stats(DBRef, Msg#msg.owner_name, Owner_id, VHost, Peer_name_id, Peer_server_id, Date);
             {error, Reason} ->
-               case regexp:match(Reason, "#42S02") of
+               case ejabberd_regexp:run(Reason, "#42S02") of
                     % Table doesn't exist
-                    {match, _, _} ->
+                    match ->
                        case create_msg_table(DBRef, VHost, Date) of
                             error ->
                                error;
@@ -388,9 +388,9 @@ handle_call({set_user_settings, User, #user_settings{dolog_default=DoLogDef,
                        ?MYDEBUG("New settings for ~s@~s", [User, VHost]),
                        ok;
                    {error, Reason} ->
-                       case regexp:match(Reason, "#23000") of
+                       case ejabberd_regexp:run(Reason, "#23000") of
                             % Already exists
-                            {match, _, _} ->
+                            match ->
                                 ok;
                              _ ->
                                 ?ERROR_MSG("Failed setup user ~p@~p: ~p", [User, VHost, Reason]),
@@ -547,11 +547,11 @@ get_dates_int(DBRef, VHost) ->
          {data, Tables} ->
             lists:foldl(fun([Table], Dates) ->
                            Reg = lists:sublist(prefix(),2,length(prefix())) ++ ".*" ++ escape_vhost(VHost),
-                           case regexp:match(Table, Reg) of
-                                {match, 1, _} ->
+                           case re:run(Table, Reg) of
+                                {match, [{1, _}]} ->
                                    ?MYDEBUG("matched ~p against ~p", [Table, Reg]),
-                                   case regexp:match(Table,"[0-9]+-[0-9]+-[0-9]+") of
-                                        {match, S, E} ->
+                                   case re:run(Table,"[0-9]+-[0-9]+-[0-9]+") of
+                                        {match, [{S, E}]} ->
                                             lists:append(Dates, [lists:sublist(Table,S,E)]);
                                         nomatch ->
                                             Dates
@@ -763,8 +763,8 @@ create_stats_table(#state{dbref=DBRef, vhost=VHost}=State) ->
             rebuild_all_stats_int(State),
             ok;
          {error, Reason} ->
-            case regexp:match(Reason, "#42S01") of
-                 {match, _, _} ->
+            case ejabberd_regexp:run(Reason, "#42S01") of
+                 match ->
                    ?MYDEBUG("Stats table for ~p already exists", [VHost]),
                    CheckQuery = ["SHOW COLUMNS FROM ",SName," LIKE 'peer_%_id';"],
                    case sql_query_internal(DBRef, CheckQuery) of
@@ -952,7 +952,7 @@ get_user_id(DBRef, VHost, User) ->
                           NewId;
                       {error, Reason} ->
                           % this can be in clustered environment
-                          {match, _, _} = regexp:match(Reason, "#23000"),
+                          match = ejabberd_regexp:run(Reason, "#23000"),
                           ?ERROR_MSG("Duplicate key name for ~p", [User]),
                           {ok, ClID} = get_user_id_from_db(DBRef, VHost, User),
                           ClID
@@ -977,7 +977,7 @@ get_server_id(DBRef, VHost, Server) ->
                 Id;
              {error, Reason} ->
                 % this can be in clustered environment
-                {match, _, _} = regexp:match(Reason, "#23000"),
+                match = ejabberd_regexp:run(Reason, "#23000"),
                 ?ERROR_MSG("Duplicate key name for ~p", [Server]),
                 update_servers_from_db(DBRef, VHost),
                 [[Id1]] = ets:match(ets_servers_table(VHost), {Server, '$1'}),
@@ -1014,7 +1014,7 @@ get_resource_id(DBRef, VHost, Resource) ->
                           NewId;
                       {error, Reason} ->
                           % this can be in clustered environment
-                          {match, _, _} = regexp:match(Reason, "#23000"),
+                          match = ejabberd_regexp:run(Reason, "#23000"),
                           ?ERROR_MSG("Duplicate key name for ~p", [Resource]),
                           {ok, ClID} = get_resource_id_from_db(DBRef, VHost, Resource),
                           ClID

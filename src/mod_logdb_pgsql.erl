@@ -493,8 +493,8 @@ get_dates_int(DBRef, VHost) ->
     case sql_query_internal(DBRef, Query) of
          {data, Recs} ->
             lists:foldl(fun({_Schema, Table, _Type, _Owner}, Dates) ->
-                             case regexp:match(Table,"[0-9]+-[0-9]+-[0-9]+") of
-                                  {match, S, E} ->
+                             case re:run(Table,"[0-9]+-[0-9]+-[0-9]+") of
+                                  {match, [{S, E}]} ->
                                       lists:append(Dates, [lists:sublist(Table,S,E)]);
                                   nomatch ->
                                       Dates
@@ -722,7 +722,7 @@ create_stats_table(#state{dbref=DBRef, vhost=VHost, schema=Schema}=State) ->
             ok;
          {atomic, exists} ->
             ?MYDEBUG("Stats table for ~p already exists", [VHost]),
-            {match, F, L} = regexp:match(SName, "\".*\""),
+            {match, [{F, L}]} = re:run(SName, "\".*\""),
             QTable = lists:sublist(SName, F+1, L-2),
             OIDQuery = ["SELECT c.oid FROM pg_catalog.pg_class c LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace WHERE c.relname='",QTable,"' AND pg_catalog.pg_table_is_visible(c.oid);"],
             {data,[{OID}]} = sql_query_internal(DBRef, OIDQuery),
