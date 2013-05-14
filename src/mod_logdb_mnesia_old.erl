@@ -30,7 +30,7 @@
 -record(msg,   {to_user, to_server, to_resource, from_user, from_server, from_resource, id, type, subject, body, timestamp}).
 
 tables_prefix() -> "messages_".
-% stats_table should not start with tables_prefix(VHost) ! 
+% stats_table should not start with tables_prefix(VHost) !
 % i.e. lists:prefix(tables_prefix(VHost), atom_to_list(stats_table())) must be /= true
 stats_table() -> list_to_atom("messages-stats").
 % table name as atom from Date
@@ -77,7 +77,7 @@ rebuild_stats_at(VHost, Date) ->
 rebuild_stats_at1(VHost, Table) ->
     CFun = fun(Msg, Stats) ->
                To = Msg#msg.to_user ++ "@" ++ Msg#msg.to_server,
-               Stats_to = if 
+               Stats_to = if
                             Msg#msg.to_server == VHost ->
                                case lists:keysearch(To, 1, Stats) of
                                     {value, {Who_to, Count_to}} ->
@@ -148,7 +148,7 @@ delete_messages_at(VHost, Date) ->
                    mnesia:delete_object(Table, Msg, write);
              (_Msg, _Acc) -> ok
           end,
-   
+
    case mnesia:transaction(fun() ->
                             mnesia:foldl(DFun, [], Table)
                            end) of
@@ -235,7 +235,7 @@ drop_user(_User, _VHost) ->
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-% internal 
+% internal
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % called from db_logon/2

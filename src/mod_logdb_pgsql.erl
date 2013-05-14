@@ -796,7 +796,7 @@ create_users_table(#state{dbref=DBRef, vhost=VHost, schema=Schema}) ->
          {atomic, created} ->
              ?MYDEBUG("Created users table for ~p", [VHost]),
              ok;
-         {atomic, exists} -> 
+         {atomic, exists} ->
              ?MYDEBUG("Users table for ~p already exists", [VHost]),
              ok;
          {aborted, _} -> error
@@ -996,7 +996,7 @@ $$ LANGUAGE plpgsql;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-% SQL internals 
+% SQL internals
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % like do_transaction/2 in mysql_conn.erl (changeset by Yariv Sadan <yarivvv@gmail.com>)

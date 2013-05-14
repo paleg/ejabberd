@@ -276,7 +276,7 @@ handle_call({get_users_settings}, _From, #state{dbref=DBRef, vhost=VHost}=State)
     Query = ["SELECT username,dolog_default,dolog_list,donotlog_list ",
                 "FROM ",settings_table(VHost)," ",
              "JOIN ",users_table(VHost)," ON user_id=owner_id;"],
-    Reply = 
+    Reply =
       case sql_query_internal(DBRef, Query) of
            {data, Result} ->
               {ok, lists:map(fun([Owner, DoLogDef, DoLogL, DoNotLogL]) ->
@@ -803,7 +803,7 @@ create_internals(#state{dbref=DBRef, vhost=VHost}) ->
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-% SQL internals 
+% SQL internals
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 sql_query_internal(DBRef, Query) ->
@@ -858,7 +858,7 @@ get_logmessage(VHost) ->
     io_lib:format("
 CREATE PROCEDURE ~s(tablename TEXT, atdate TEXT, owner TEXT, peer_name TEXT, peer_server TEXT, peer_resource TEXT, mdirection VARCHAR(4), mtype VARCHAR(10), msubject TEXT, mbody TEXT, mtimestamp DOUBLE)
 BEGIN
-   DECLARE ownerID MEDIUMINT UNSIGNED; 
+   DECLARE ownerID MEDIUMINT UNSIGNED;
    DECLARE peer_nameID MEDIUMINT UNSIGNED;
    DECLARE peer_serverID MEDIUMINT UNSIGNED;
    DECLARE peer_resourceID MEDIUMINT UNSIGNED;
@@ -888,7 +888,7 @@ BEGIN
    SELECT user_id INTO @ownerID FROM ~s WHERE username=owner;
    IF @ownerID IS NULL THEN
       INSERT INTO ~s SET username=owner;
-      SET @ownerID = LAST_INSERT_ID(); 
+      SET @ownerID = LAST_INSERT_ID();
    END IF;
 
    SELECT user_id INTO @peer_nameID FROM ~s WHERE username=peer_name;

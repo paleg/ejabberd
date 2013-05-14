@@ -16,7 +16,7 @@
 
 -behaviour(gen_logdb).
 -behaviour(gen_server).
-   
+
 % gen_server
 -export([code_change/3,handle_call/3,handle_cast/2,handle_info/2,init/1,terminate/2]).
 % gen_mod
@@ -30,10 +30,10 @@
          get_dates/1,
          get_users_settings/1, get_user_settings/2, set_user_settings/3,
          drop_user/2]).
- 
+
 -define(PROCNAME, mod_logdb_mnesia).
 -define(CALL_TIMEOUT, 10000).
-  
+
 -record(state, {vhost}).
 
 -record(stats, {user, at, count}).
@@ -96,7 +96,7 @@ handle_call({rebuild_stats}, _From, #state{vhost=VHost}=State) ->
     {reply, Reply, State};
 handle_call({rebuild_stats_at, Date}, _From, #state{vhost=VHost}=State) ->
     Reply = rebuild_stats_at_int(VHost, Date),
-    {reply, Reply, State}; 
+    {reply, Reply, State};
 handle_call({delete_messages_by_user_at, Msgs, Date}, _From, #state{vhost=VHost}=State) ->
     Table = table_name(VHost, Date),
     Fun = fun() ->

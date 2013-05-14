@@ -334,7 +334,7 @@ handle_call({get_users_settings}, _From, #state{dbref=DBRef, vhost=VHost}=State)
     Query = ["SELECT username,dolog_default,dolog_list,donotlog_list ",
                 "FROM ",settings_table(VHost)," ",
              "JOIN ",users_table(VHost)," ON user_id=owner_id;"],
-    Reply = 
+    Reply =
       case sql_query_internal(DBRef, Query) of
            {data, Result} ->
               {ok, lists:map(fun([Owner, DoLogDef, DoLogL, DoNotLogL]) ->
@@ -556,7 +556,6 @@ get_dates_int(DBRef, VHost) ->
                                         nomatch ->
                                             Dates
                                    end;
-                               
                                 _ ->
                                    Dates
                            end
@@ -1027,7 +1026,7 @@ get_resource_id(DBRef, VHost, Resource) ->
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-% SQL internals 
+% SQL internals
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 sql_query_internal(DBRef, Query) ->

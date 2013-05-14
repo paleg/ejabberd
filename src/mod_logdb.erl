@@ -22,7 +22,7 @@
 % hooks
 -export([send_packet/3, receive_packet/4, remove_user/2]).
 -export([get_local_identity/5,
-         get_local_features/5, 
+         get_local_features/5,
          get_local_items/5,
          adhoc_local_items/4,
          adhoc_local_commands/4
@@ -355,7 +355,7 @@ handle_info(start, #state{dbmod=DBMod, vhost=VHost}=State) ->
            {stop, db_connection_failed, State};
          {ok, SPid} ->
            ?INFO_MSG("~p connection established", [DBMod]),
-           
+
            MonRef = erlang:monitor(process, SPid),
 
            ets:new(ets_settings_table(VHost), [named_table,public,set,{keypos, #user_settings.owner_name}]),
@@ -464,7 +464,7 @@ send_packet(Owner, Peer, P) ->
     Proc = gen_mod:get_module_proc(VHost, ?PROCNAME),
     gen_server:cast(Proc, {addlog, to, Owner, Peer, P}).
 
-receive_packet(_JID, Peer, Owner, P) -> 
+receive_packet(_JID, Peer, Owner, P) ->
     VHost = Owner#jid.lserver,
     Proc = gen_mod:get_module_proc(VHost, ?PROCNAME),
     gen_server:cast(Proc, {addlog, from, Owner, Peer, P}).
@@ -526,7 +526,7 @@ packet_parse(Owner, Peer, Packet, Direction, State) ->
                    Ni=lists:foldl(fun([{muc_online_room, {GName, GHost}, Pid}], Names) ->
                                    case gen_fsm:sync_send_all_state_event(Pid, {get_jid_nick,Owner}) of
                                         [] -> Names;
-                                        Nick -> 
+                                        Nick ->
                                            lists:append(Names, [jlib:jid_to_string({GName, GHost, Nick})])
                                    end
                                   end, [], Rooms),
@@ -591,7 +591,7 @@ filter(Owner, Peer, State) ->
                  _ -> State#state.dolog_default
 	    end,
 
-    lists:all(fun(O) -> O end, 
+    lists:all(fun(O) -> O end,
               [not lists:member(OwnerStr, State#state.ignore_jids),
                not lists:member(PeerStr, State#state.ignore_jids),
                not lists:member(OwnerServ, State#state.ignore_jids),
@@ -611,7 +611,7 @@ purge_old_records(VHost, Days) ->
                     if
                      (DateNow - DateInSec) > DateDiff ->
                         gen_server:call(Proc, {delete_messages_at, Date});
-                     true -> 
+                     true ->
                         ?MYDEBUG("Skipping messages at ~p", [Date])
                     end
               end, Dates).
@@ -817,7 +817,7 @@ copy_messages([#state{vhost=VHost}=State, From]) ->
     FromDBMod = list_to_atom(atom_to_list(?MODULE) ++ "_" ++ atom_to_list(FromDBName)),
 
     {ok, _FromPid} = FromDBMod:start(VHost, FromDBOpts),
- 
+
     Dates = FromDBMod:get_dates(VHost),
     DatesLength = length(Dates),
 
@@ -858,7 +858,7 @@ copy_messages_int([FromDBMod, ToDBMod, VHost, Date]) ->
 
 copy_messages_int_tc([FromDBMod, ToDBMod, VHost, Date]) ->
     ?INFO_MSG("Going to copy messages from ~p for ~p at ~p", [FromDBMod, VHost, Date]),
-   
+
     ok = FromDBMod:rebuild_stats_at(VHost, Date),
     catch mod_logdb:rebuild_stats_at(VHost, Date),
     {ok, FromStats} = FromDBMod:get_vhost_stats_at(VHost, Date),
@@ -1533,7 +1533,7 @@ check_ignore_list([]) ->
 
 parse_users_settings(XData) ->
     DLD = case lists:keysearch("dolog_default", 1, XData) of
-               {value, {_, [String]}} when String == "true"; String == "false" -> 
+               {value, {_, [String]}} when String == "true"; String == "false" ->
                  list_to_bool(String);
                _ ->
                  throw(bad_request)
