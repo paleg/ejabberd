@@ -726,6 +726,12 @@ handle_sync_event({change_config, Config}, _From, StateName, StateData) ->
     {reply, {ok, NSD#state.config}, StateName, NSD};
 handle_sync_event({change_state, NewStateData}, _From, StateName, _StateData) ->
     {reply, {ok, NewStateData}, StateName, NewStateData};
+handle_sync_event({get_jid_nick, Jid}, _From, StateName, StateData) ->
+    R = case ?DICT:find(jlib:jid_tolower(Jid), StateData#state.users) of
+             error -> [];
+             {ok, {user, _, Nick, _, _}} -> Nick
+        end,
+    {reply, R, StateName, StateData};
 handle_sync_event(_Event, _From, StateName, StateData) ->
     Reply = ok,
     {reply, Reply, StateName, StateData}.
