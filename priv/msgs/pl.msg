@@ -419,3 +419,27 @@
 {"Your Jabber account was successfully created.","Twoje konto zostało stworzone."}.
 {"Your Jabber account was successfully deleted.","Twoje konto zostało usunięte."}.
 {"Your messages to ~s are being blocked. To unblock them, visit ~s","Twoje wiadomości do ~s są blokowane. Aby je odblokować, odwiedź ~s"}.
+% mod_logdb
+{"Users Messages", "Wiadomości użytkownika"}.
+{"Date", "Data"}.
+{"Count", "Liczba"}.
+{"Logged messages for ", "Zapisane wiadomości dla "}.
+{" at ", " o "}.
+{"No logged messages for ", "Brak zapisanych wiadomości dla "}.
+{"Date, Time", "Data, Godzina"}.
+{"Direction: Jid", "Kierunek: Jid"}.
+{"Subject", "Temat"}.
+{"Body", "Treść"}.
+{"Messages","Wiadomości"}.
+{"Filter Selected", "Odfiltruj zaznaczone"}.
+{"Do Not Log Messages", "Nie zapisuj wiadomości"}.
+{"Log Messages", "Zapisuj wiadomości"}.
+{"Messages logging engine", "System zapisywania historii rozmów"}.
+{"Default", "Domyślne"}.
+{"Set logging preferences", "Ustaw preferencje zapisywania"}.
+{"Messages logging engine settings", "Ustawienia systemu logowania"}.
+{"Set run-time settings", "Zapisz ustawienia systemu logowania"}.
+{"Groupchat messages logging", "Zapisywanie rozmów z konferencji"}.
+{"Jids/Domains to ignore", "JID/Domena która ma być ignorowana"}.
+{"Purge messages older than (days)", "Usuń wiadomości starsze niż (w dniach)"}.
+{"Poll users settings (seconds)", "Czas aktualizacji preferencji użytkowników (sekundy)"}.
