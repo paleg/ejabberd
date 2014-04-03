@@ -47,7 +47,7 @@
 % replace "." with "_"
 escape_vhost(VHost) -> lists:map(fun(46) -> 95;
                                     (A) -> A
-                                 end, VHost).
+                                 end, binary_to_list(VHost)).
 prefix() ->
    "`logdb_".
 
@@ -73,9 +73,9 @@ servers_table(VHost) ->
 resources_table(VHost) ->
    prefix() ++ "resources" ++ suffix(VHost).
 
-ets_users_table(VHost) -> list_to_atom("logdb_users_" ++ VHost).
-ets_servers_table(VHost) -> list_to_atom("logdb_servers_" ++ VHost).
-ets_resources_table(VHost) -> list_to_atom("logdb_resources_" ++ VHost).
+ets_users_table(VHost) -> list_to_atom("logdb_users_" ++ binary_to_list(VHost)).
+ets_servers_table(VHost) -> list_to_atom("logdb_servers_" ++ binary_to_list(VHost)).
+ets_resources_table(VHost) -> list_to_atom("logdb_resources_" ++ binary_to_list(VHost)).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
@@ -98,11 +98,11 @@ stop(VHost) ->
 init([VHost, Opts]) ->
    crypto:start(),
 
-   Server = gen_mod:get_opt(server, Opts, "localhost"),
-   Port = gen_mod:get_opt(port, Opts, 3306),
-   DB = gen_mod:get_opt(db, Opts, "logdb"),
-   User = gen_mod:get_opt(user, Opts, "root"),
-   Password = gen_mod:get_opt(password, Opts, ""),
+   Server = gen_mod:get_opt(server, Opts, fun(A) -> A end, <<"localhost">>),
+   Port = gen_mod:get_opt(port, Opts, fun(A) -> A end, 3306),
+   DB = gen_mod:get_opt(db, Opts, fun(A) -> A end, <<"logdb">>),
+   User = gen_mod:get_opt(user, Opts, fun(A) -> A end, <<"root">>),
+   Password = gen_mod:get_opt(password, Opts, fun(A) -> A end, <<"">>),
 
    St = #state{vhost=VHost,
                server=Server, port=Port, db=DB,
@@ -137,20 +137,22 @@ open_mysql_connection(#state{server=Server, port=Port, db=DB,
                  ?MYDEBUG(Format, Argument)
             end,
    ?INFO_MSG("Opening mysql connection ~s@~s:~p/~s", [DBUser, Server, Port, DB]),
-   mysql_conn:start(Server, Port, DBUser, Password, DB, LogFun).
+   p1_mysql_conn:start(binary_to_list(Server), Port,
+                       binary_to_list(DBUser), binary_to_list(Password),
+                       binary_to_list(DB), LogFun).
 
 close_mysql_connection(DBRef) ->
    ?MYDEBUG("Closing ~p mysql connection", [DBRef]),
-   mysql_conn:stop(DBRef).
+   catch p1_mysql_conn:stop(DBRef).
 
 handle_call({log_message, Msg}, _From, #state{dbref=DBRef, vhost=VHost}=State) ->
     Date = convert_timestamp_brief(Msg#msg.timestamp),
 
     Table = messages_table(VHost, Date),
-    Owner_id = get_user_id(DBRef, VHost, Msg#msg.owner_name),
-    Peer_name_id = get_user_id(DBRef, VHost, Msg#msg.peer_name),
-    Peer_server_id = get_server_id(DBRef, VHost, Msg#msg.peer_server),
-    Peer_resource_id = get_resource_id(DBRef, VHost, Msg#msg.peer_resource),
+    Owner_id = get_user_id(DBRef, VHost, binary_to_list(Msg#msg.owner_name)),
+    Peer_name_id = get_user_id(DBRef, VHost, binary_to_list(Msg#msg.peer_name)),
+    Peer_server_id = get_server_id(DBRef, VHost, binary_to_list(Msg#msg.peer_server)),
+    Peer_resource_id = get_resource_id(DBRef, VHost, binary_to_list(Msg#msg.peer_resource)),
 
     Query = ["INSERT INTO ",Table," ",
                "(owner_id,",
@@ -168,19 +170,19 @@ handle_call({log_message, Msg}, _From, #state{dbref=DBRef, vhost=VHost}=State) -
                  "'", Peer_server_id, "',",
                  "'", Peer_resource_id, "',",
                  "'", atom_to_list(Msg#msg.direction), "',",
-                 "'", Msg#msg.type, "',",
-                 "'", ejabberd_odbc:escape(Msg#msg.subject), "',",
-                 "'", ejabberd_odbc:escape(Msg#msg.body), "',",
+                 "'", binary_to_list(Msg#msg.type), "',",
+                 "'", binary_to_list( ejabberd_odbc:escape(Msg#msg.subject) ), "',",
+                 "'", binary_to_list( ejabberd_odbc:escape(Msg#msg.body) ), "',",
                  "'", Msg#msg.timestamp, "');"],
 
     Reply =
        case sql_query_internal_silent(DBRef, Query) of
             {updated, _} ->
-               ?MYDEBUG("Logged ok for ~p, peer: ~p", [Msg#msg.owner_name++"@"++VHost,
-                                                       Msg#msg.peer_name++"@"++Msg#msg.peer_server]),
+               ?MYDEBUG("Logged ok for ~s, peer: ~s", [ [Msg#msg.owner_name, <<"@">>, VHost],
+                                                        [Msg#msg.peer_name, <<"@">>, Msg#msg.peer_server] ]),
                increment_user_stats(DBRef, Msg#msg.owner_name, Owner_id, VHost, Peer_name_id, Peer_server_id, Date);
             {error, Reason} ->
-               case ejabberd_regexp:run(Reason, "#42S02") of
+               case ejabberd_regexp:run(iolist_to_binary(Reason), <<"#42S02">>) of
                     % Table doesn't exist
                     match ->
                        case create_msg_table(DBRef, VHost, Date) of
@@ -188,7 +190,7 @@ handle_call({log_message, Msg}, _From, #state{dbref=DBRef, vhost=VHost}=State) -
                                error;
                             ok ->
                                {updated, _} = sql_query_internal(DBRef, Query),
-                               increment_user_stats(DBRef, Msg#msg.owner_name, Owner_id, VHost, Peer_name_id, Peer_server_id, Date)
+                               increment_user_stats(DBRef, binary_to_list(Msg#msg.owner_name), Owner_id, VHost, Peer_name_id, Peer_server_id, Date)
                        end;
                     _ ->
                        ?ERROR_MSG("Failed to log message: ~p", [Reason]),
@@ -389,7 +391,7 @@ handle_call({set_user_settings, User, #user_settings{dolog_default=DoLogDef,
                        ?MYDEBUG("New settings for ~s@~s", [User, VHost]),
                        ok;
                    {error, Reason} ->
-                       case ejabberd_regexp:run(Reason, "#23000") of
+                       case ejabberd_regexp:run(iolist_to_binary(Reason), <<"#23000">>) of
                             % Already exists
                             match ->
                                 ok;
@@ -763,7 +765,7 @@ create_stats_table(#state{dbref=DBRef, vhost=VHost}=State) ->
             rebuild_all_stats_int(State),
             ok;
          {error, Reason} ->
-            case ejabberd_regexp:run(Reason, "#42S01") of
+            case ejabberd_regexp:run(iolist_to_binary(Reason), <<"#42S01">>) of
                  match ->
                    ?MYDEBUG("Stats table for ~p already exists", [VHost]),
                    CheckQuery = ["SHOW COLUMNS FROM ",SName," LIKE 'peer_%_id';"],
@@ -952,7 +954,7 @@ get_user_id(DBRef, VHost, User) ->
                           NewId;
                       {error, Reason} ->
                           % this can be in clustered environment
-                          match = ejabberd_regexp:run(Reason, "#23000"),
+                          match = ejabberd_regexp:run(iolist_to_binary(Reason), <<"#23000">>),
                           ?ERROR_MSG("Duplicate key name for ~p", [User]),
                           {ok, ClID} = get_user_id_from_db(DBRef, VHost, User),
                           ClID
@@ -977,7 +979,7 @@ get_server_id(DBRef, VHost, Server) ->
                 Id;
              {error, Reason} ->
                 % this can be in clustered environment
-                match = ejabberd_regexp:run(Reason, "#23000"),
+                match = ejabberd_regexp:run(iolist_to_binary(Reason), <<"#23000">>),
                 ?ERROR_MSG("Duplicate key name for ~p", [Server]),
                 update_servers_from_db(DBRef, VHost),
                 [[Id1]] = ets:match(ets_servers_table(VHost), {Server, '$1'}),
@@ -988,7 +990,7 @@ get_server_id(DBRef, VHost, Server) ->
 
 get_resource_id_from_db(DBRef, VHost, Resource) ->
   SQuery = ["SELECT resource_id FROM ",resources_table(VHost)," ",
-               "WHERE resource=\"",ejabberd_odbc:escape(Resource),"\";"],
+               "WHERE resource=\"",binary_to_list(ejabberd_odbc:escape(iolist_to_binary(Resource))),"\";"],
   case sql_query_internal(DBRef, SQuery) of
        % no such resource in db
        {data, []} ->
@@ -1007,15 +1009,15 @@ get_resource_id(DBRef, VHost, Resource) ->
               % no such resource in db
               {ok, []} ->
                  IQuery = ["INSERT INTO ",resources_table(VHost)," ",
-                              "SET resource=\"",ejabberd_odbc:escape(Resource),"\";"],
+                              "SET resource=\"",binary_to_list(ejabberd_odbc:escape(iolist_to_binary(Resource))),"\";"],
                  case sql_query_internal_silent(DBRef, IQuery) of
                       {updated, _} ->
                           {ok, NewId} = get_resource_id_from_db(DBRef, VHost, Resource),
                           NewId;
                       {error, Reason} ->
                           % this can be in clustered environment
-                          match = ejabberd_regexp:run(Reason, "#23000"),
-                          ?ERROR_MSG("Duplicate key name for ~p", [Resource]),
+                          match = ejabberd_regexp:run(iolist_to_binary(Reason), <<"#23000">>),
+                          ?ERROR_MSG("Duplicate key name for ~s", [Resource]),
                           {ok, ClID} = get_resource_id_from_db(DBRef, VHost, Resource),
                           ClID
                  end;
@@ -1040,14 +1042,14 @@ sql_query_internal(DBRef, Query) ->
 
 sql_query_internal_silent(DBRef, Query) ->
     ?MYDEBUG("DOING: \"~s\"", [lists:append(Query)]),
-    get_result(mysql_conn:fetch(DBRef, Query, self(), ?MYSQL_TIMEOUT)).
+    get_result(p1_mysql_conn:fetch(DBRef, Query, self(), ?MYSQL_TIMEOUT)).
 
 get_result({updated, MySQLRes}) ->
-    {updated, mysql:get_result_affected_rows(MySQLRes)};
+    {updated, p1_mysql:get_result_affected_rows(MySQLRes)};
 get_result({data, MySQLRes}) ->
-    {data, mysql:get_result_rows(MySQLRes)};
+    {data, p1_mysql:get_result_rows(MySQLRes)};
 get_result({error, "query timed out"}) ->
     {error, "query timed out"};
 get_result({error, MySQLRes}) ->
-    Reason = mysql:get_result_reason(MySQLRes),
+    Reason = p1_mysql:get_result_reason(MySQLRes),
     {error, Reason}.
