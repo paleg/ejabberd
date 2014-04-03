@@ -75,7 +75,7 @@
 
 -record(state, {vhost, dbmod, backendPid, monref, purgeRef, pollRef, dbopts, dbs, dolog_default, ignore_jids, groupchat, purge_older_days, poll_users_settings, drop_messages_on_user_removal}).
 
-ets_settings_table(VHost) -> list_to_atom("ets_logdb_settings_" ++ VHost).
+ets_settings_table(VHost) -> list_to_atom("ets_logdb_settings_" ++ binary_to_list(VHost)).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
@@ -102,12 +102,11 @@ start_link(VHost, Opts) ->
     {ok, Pid}.
 
 init([VHost, Opts]) ->
-    ?MYDEBUG("Starting mod_logdb", []),
     process_flag(trap_exit, true),
-    DBs = gen_mod:get_opt(dbs, Opts, [{mnesia, []}]),
-    VHostDB = gen_mod:get_opt(vhosts, Opts, [{VHost, mnesia}]),
+    DBs = gen_mod:get_opt(dbs, Opts, fun(A) -> A end, [{mnesia, []}]),
+    VHostDB = gen_mod:get_opt(vhosts, Opts, fun(A) -> A end, [{VHost, mnesia}]),
     % 10 is default becouse of using in clustered environment
-    PollUsersSettings = gen_mod:get_opt(poll_users_settings, Opts, 10),
+    PollUsersSettings = gen_mod:get_opt(poll_users_settings, Opts, fun(A) -> A end, 10),
 
     {value,{_, DBName}} = lists:keysearch(VHost, 1, VHostDB),
     {value, {DBName, DBOpts}} = lists:keysearch(DBName, 1, DBs),
@@ -121,11 +120,11 @@ init([VHost, Opts]) ->
                 dbopts=DBOpts,
                 % dbs used for convert messages from one backend to other
                 dbs=DBs,
-                dolog_default=gen_mod:get_opt(dolog_default, Opts, true),
-                drop_messages_on_user_removal=gen_mod:get_opt(drop_messages_on_user_removal, Opts, true),
-                ignore_jids=gen_mod:get_opt(ignore_jids, Opts, []),
-                groupchat=gen_mod:get_opt(groupchat, Opts, none),
-                purge_older_days=gen_mod:get_opt(purge_older_days, Opts, never),
+                dolog_default=gen_mod:get_opt(dolog_default, Opts, fun(A) -> A end, true),
+                drop_messages_on_user_removal=gen_mod:get_opt(drop_messages_on_user_removal, Opts, fun(A) -> A end, true),
+                ignore_jids=gen_mod:get_opt(ignore_jids, Opts, fun(A) -> A end, []),
+                groupchat=gen_mod:get_opt(groupchat, Opts, fun(A) -> A end, none),
+                purge_older_days=gen_mod:get_opt(purge_older_days, Opts, fun(A) -> A end, never),
                 poll_users_settings=PollUsersSettings}}.
 
 cleanup(#state{vhost=VHost} = _State) ->
@@ -183,10 +182,10 @@ handle_call({get_dates}, _From, #state{dbmod=DBMod, vhost=VHost}=State) ->
 % ejabberd_web_admin callbacks
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 handle_call({delete_messages_by_user_at, PMsgs, Date}, _From, #state{dbmod=DBMod, vhost=VHost}=State) ->
-    Reply = DBMod:delete_messages_by_user_at(VHost, PMsgs, Date),
+    Reply = DBMod:delete_messages_by_user_at(VHost, PMsgs, binary_to_list(Date)),
     {reply, Reply, State};
 handle_call({delete_all_messages_by_user_at, User, Date}, _From, #state{dbmod=DBMod, vhost=VHost}=State) ->
-    Reply = DBMod:delete_all_messages_by_user_at(User, VHost, Date),
+    Reply = DBMod:delete_all_messages_by_user_at(binary_to_list(User), VHost, binary_to_list(Date)),
     {reply, Reply, State};
 handle_call({delete_messages_at, Date}, _From, #state{dbmod=DBMod, vhost=VHost}=State) ->
     Reply = DBMod:delete_messages_at(VHost, Date),
@@ -195,13 +194,13 @@ handle_call({get_vhost_stats}, _From, #state{dbmod=DBMod, vhost=VHost}=State) ->
     Reply = DBMod:get_vhost_stats(VHost),
     {reply, Reply, State};
 handle_call({get_vhost_stats_at, Date}, _From, #state{dbmod=DBMod, vhost=VHost}=State) ->
-    Reply = DBMod:get_vhost_stats_at(VHost, Date),
+    Reply = DBMod:get_vhost_stats_at(VHost, binary_to_list(Date)),
     {reply, Reply, State};
 handle_call({get_user_stats, User}, _From, #state{dbmod=DBMod, vhost=VHost}=State) ->
-    Reply = DBMod:get_user_stats(User, VHost),
+    Reply = DBMod:get_user_stats(binary_to_list(User), VHost),
     {reply, Reply, State};
 handle_call({get_user_messages_at, User, Date}, _From, #state{dbmod=DBMod, vhost=VHost}=State) ->
-    Reply = DBMod:get_user_messages_at(User, VHost, Date),
+    Reply = DBMod:get_user_messages_at(binary_to_list(User), VHost, binary_to_list(Date)),
     {reply, Reply, State};
 handle_call({get_user_settings, User}, _From, #state{dbmod=_DBMod, vhost=VHost}=State) ->
     Reply = case ets:match_object(ets_settings_table(VHost),
@@ -216,6 +215,7 @@ handle_call({get_user_settings, User}, _From, #state{dbmod=_DBMod, vhost=VHost}=
 % TODO: remove User ??
 handle_call({set_user_settings, User, GSet}, _From, #state{dbmod=DBMod, vhost=VHost}=State) ->
     Set = GSet#user_settings{owner_name=User},
+    ?MYDEBUG("User = ~p, Set = ~p", [User, Set]),
     Reply =
        case ets:match_object(ets_settings_table(VHost),
                              #user_settings{owner_name=User, _='_'}) of
@@ -223,7 +223,7 @@ handle_call({set_user_settings, User, GSet}, _From, #state{dbmod=DBMod, vhost=VH
                 ?MYDEBUG("Settings is equal", []),
                 ok;
             _ ->
-                case DBMod:set_user_settings(User, VHost, Set) of
+                case DBMod:set_user_settings(binary_to_list(User), VHost, Set) of
                      error ->
                        error;
                      ok ->
@@ -282,6 +282,7 @@ handle_call(Msg, _From, State) ->
 
 % ejabberd_hooks call
 handle_cast({addlog, Direction, Owner, Peer, Packet}, #state{dbmod=DBMod, vhost=VHost}=State) ->
+    ?MYDEBUG("addlog: ~p ~p ~p ~p ~p", [Owner, Peer, Packet, Direction, State]),
     case filter(Owner, Peer, State) of
          true ->
               case catch packet_parse(Owner, Peer, Packet, Direction, State) of
@@ -299,7 +300,7 @@ handle_cast({addlog, Direction, Owner, Peer, Packet}, #state{dbmod=DBMod, vhost=
 handle_cast({remove_user, User}, #state{dbmod=DBMod, vhost=VHost}=State) ->
     case State#state.drop_messages_on_user_removal of
          true ->
-           DBMod:drop_user(User, VHost),
+           DBMod:drop_user(binary_to_list(User), VHost),
            ?INFO_MSG("Launched ~s@~s removal", [User, VHost]);
          false ->
            ?INFO_MSG("Message removing is disabled. Keeping messages for ~s@~s", [User, VHost])
@@ -461,6 +462,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % TODO: change to/from to list as sql stores it as list
 send_packet(Owner, Peer, P) ->
+    ?MYDEBUG("send_packet: ~p ~p ~p", [Owner, Peer, P]),
     VHost = Owner#jid.lserver,
     Proc = gen_mod:get_module_proc(VHost, ?PROCNAME),
     gen_server:cast(Proc, {addlog, to, Owner, Peer, P}).
@@ -507,22 +509,22 @@ copy_messages_ctl(Val, _VHost, _Args) ->
 % handle_cast({addlog, E}, _)
 % raw packet -> #msg
 packet_parse(Owner, Peer, Packet, Direction, State) ->
-    case xml:get_subtag(Packet, "body") of
+    case xml:get_subtag(Packet, <<"body">>) of
          false ->
            ignore;
          Body_xml ->
            Message_type =
-              case xml:get_tag_attr_s("type", Packet) of
-                   [] -> "normal";
+              case xml:get_tag_attr_s(<<"type">>, Packet) of
+                   [] -> <<"normal">>;
                    MType -> MType
               end,
 
            case Message_type of
-                "groupchat" when State#state.groupchat == send, Direction == to ->
+                <<"groupchat">> when State#state.groupchat == send, Direction == to ->
                    ok;
-                "groupchat" when State#state.groupchat == send, Direction == from ->
+                <<"groupchat">> when State#state.groupchat == send, Direction == from ->
                    throw(ignore);
-                "groupchat" when State#state.groupchat == half ->
+                <<"groupchat">> when State#state.groupchat == half ->
                    Rooms = ets:match(muc_online_room, '$1'),
                    Ni=lists:foldl(fun([{muc_online_room, {GName, GHost}, Pid}], Names) ->
                                    case gen_fsm:sync_send_all_state_event(Pid, {get_jid_nick,Owner}) of
@@ -537,7 +539,7 @@ packet_parse(Owner, Peer, Packet, Direction, State) ->
                         _ ->
                           ok
                    end;
-                "groupchat" when State#state.groupchat == none ->
+                <<"groupchat">> when State#state.groupchat == none ->
                    throw(ignore);
                 _ ->
                    ok
@@ -545,9 +547,9 @@ packet_parse(Owner, Peer, Packet, Direction, State) ->
 
            Message_body = xml:get_tag_cdata(Body_xml),
            Message_subject =
-              case xml:get_subtag(Packet, "subject") of
+              case xml:get_subtag(Packet, <<"subject">>) of
                    false ->
-                     "";
+                     <<"">>;
                    Subject_xml ->
                      xml:get_tag_cdata(Subject_xml)
               end,
@@ -557,23 +559,23 @@ packet_parse(Owner, Peer, Packet, Direction, State) ->
            PServer = stringprep:tolower(Peer#jid.server),
            PResource = Peer#jid.resource,
 
-           #msg{timestamp=get_timestamp(),
-                owner_name=OwnerName,
-                peer_name=PName,
-                peer_server=PServer,
-                peer_resource=PResource,
-                direction=Direction,
-                type=Message_type,
-                subject=Message_subject,
-                body=Message_body}
+           #msg{timestamp     = get_timestamp(),
+                owner_name    = OwnerName,
+                peer_name     = PName,
+                peer_server   = PServer,
+                peer_resource = PResource,
+                direction     = Direction,
+                type          = Message_type,
+                subject       = Message_subject,
+                body          = Message_body}
     end.
 
 % called from handle_cast({addlog, _}, _) -> true (log messages) | false (do not log messages)
 filter(Owner, Peer, State) ->
-    OwnerStr = Owner#jid.luser++"@"++Owner#jid.lserver,
-    OwnerServ = "@"++Owner#jid.lserver,
-    PeerStr = Peer#jid.luser++"@"++Peer#jid.lserver,
-    PeerServ = "@"++Peer#jid.lserver,
+    OwnerStr = binary_to_list(Owner#jid.luser)++"@"++binary_to_list(Owner#jid.lserver),
+    OwnerServ = "@"++binary_to_list(Owner#jid.lserver),
+    PeerStr = binary_to_list(Peer#jid.luser)++"@"++binary_to_list(Peer#jid.lserver),
+    PeerServ = "@"++binary_to_list(Peer#jid.lserver),
 
     LogTo = case ets:match_object(ets_settings_table(State#state.vhost),
                                   #user_settings{owner_name=Owner#jid.luser, _='_'}) of
@@ -591,7 +593,6 @@ filter(Owner, Peer, State) ->
                       end;
                  _ -> State#state.dolog_default
 	    end,
-
     lists:all(fun(O) -> O end,
               [not lists:member(OwnerStr, State#state.ignore_jids),
                not lists:member(PeerStr, State#state.ignore_jids),
@@ -713,13 +714,14 @@ set_module_settings(VHost, Settings) ->
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 user_messages_at_parse_query(VHost, Date, Msgs, Query) ->
-    case lists:keysearch("delete", 1, Query) of
+    case lists:keysearch(<<"delete">>, 1, Query) of
          {value, _} ->
              PMsgs = lists:filter(
                               fun(Msg) ->
-                                   ID = jlib:encode_base64(binary_to_list(term_to_binary(Msg#msg.timestamp))),
-                                   lists:member({"selected", ID}, Query)
+                                   ID = jlib:encode_base64(term_to_binary(Msg#msg.timestamp)),
+                                   lists:member({<<"selected">>, ID}, Query)
                               end, Msgs),
+             ?MYDEBUG("PMsgs = ~p", [PMsgs]),
              Proc = gen_mod:get_module_proc(VHost, ?PROCNAME),
              gen_server:call(Proc, {delete_messages_by_user_at, PMsgs, Date}, ?CALL_TIMEOUT);
          false ->
@@ -727,20 +729,21 @@ user_messages_at_parse_query(VHost, Date, Msgs, Query) ->
     end.
 
 user_messages_parse_query(User, VHost, Query) ->
-    case lists:keysearch("delete", 1, Query) of
+    case lists:keysearch(<<"delete">>, 1, Query) of
          {value, _} ->
              Dates = get_dates(VHost),
              PDates = lists:filter(
                               fun(Date) ->
-                                   ID = jlib:encode_base64(binary_to_list(term_to_binary(User++Date))),
-                                   lists:member({"selected", ID}, Query)
+                                   DateBin = iolist_to_binary(Date),
+                                   ID = jlib:encode_base64( << User/binary, DateBin/binary >> ),
+                                   lists:member({<<"selected">>, ID}, Query)
                               end, Dates),
              Proc = gen_mod:get_module_proc(VHost, ?PROCNAME),
              Rez = lists:foldl(
                           fun(Date, Acc) ->
                               lists:append(Acc,
                                            [gen_server:call(Proc,
-                                                            {delete_all_messages_by_user_at, User, Date},
+                                                            {delete_all_messages_by_user_at, User, iolist_to_binary(Date)},
                                                             ?CALL_TIMEOUT)])
                           end, [], PDates),
              case lists:member(error, Rez) of
@@ -754,13 +757,14 @@ user_messages_parse_query(User, VHost, Query) ->
     end.
 
 vhost_messages_parse_query(VHost, Query) ->
-    case lists:keysearch("delete", 1, Query) of
+    case lists:keysearch(<<"delete">>, 1, Query) of
          {value, _} ->
              Dates = get_dates(VHost),
              PDates = lists:filter(
                               fun(Date) ->
-                                   ID = jlib:encode_base64(binary_to_list(term_to_binary(VHost++Date))),
-                                   lists:member({"selected", ID}, Query)
+                                   DateBin = iolist_to_binary(Date),
+                                   ID = jlib:encode_base64( << VHost/binary, DateBin/binary >> ),
+                                   lists:member({<<"selected">>, ID}, Query)
                               end, Dates),
              Proc = gen_mod:get_module_proc(VHost, ?PROCNAME),
              Rez = lists:foldl(fun(Date, Acc) ->
@@ -779,18 +783,18 @@ vhost_messages_parse_query(VHost, Query) ->
     end.
 
 vhost_messages_at_parse_query(VHost, Date, Stats, Query) ->
-    case lists:keysearch("delete", 1, Query) of
+    case lists:keysearch(<<"delete">>, 1, Query) of
          {value, _} ->
              PStats = lists:filter(
                               fun({User, _Count}) ->
-                                   ID = jlib:encode_base64(binary_to_list(term_to_binary(User++VHost))),
-                                   lists:member({"selected", ID}, Query)
+                                   ID = jlib:encode_base64( << User/binary, VHost/binary >> ),
+                                   lists:member({<<"selected">>, ID}, Query)
                               end, Stats),
              Proc = gen_mod:get_module_proc(VHost, ?PROCNAME),
              Rez = lists:foldl(fun({User, _Count}, Acc) ->
                                    lists:append(Acc, [gen_server:call(Proc,
                                                                       {delete_all_messages_by_user_at,
-                                                                       User, Date},
+                                                                       User, iolist_to_binary(Date)},
                                                                       ?CALL_TIMEOUT)])
                                end, [], PStats),
              case lists:member(error, Rez) of
@@ -860,9 +864,9 @@ copy_messages_int([FromDBMod, ToDBMod, VHost, Date]) ->
 copy_messages_int_tc([FromDBMod, ToDBMod, VHost, Date]) ->
     ?INFO_MSG("Going to copy messages from ~p for ~p at ~p", [FromDBMod, VHost, Date]),
 
-    ok = FromDBMod:rebuild_stats_at(VHost, Date),
+    ok = FromDBMod:rebuild_stats_at(VHost, binary_to_list(Date)),
     catch mod_logdb:rebuild_stats_at(VHost, Date),
-    {ok, FromStats} = FromDBMod:get_vhost_stats_at(VHost, Date),
+    {ok, FromStats} = FromDBMod:get_vhost_stats_at(VHost, binary_to_list(Date)),
     ToStats = case mod_logdb:get_vhost_stats_at(VHost, Date) of
                    {ok, Stats} -> Stats;
                    {error, _} -> []
@@ -877,7 +881,7 @@ copy_messages_int_tc([FromDBMod, ToDBMod, VHost, Date]) ->
                                                    % destination table is empty
                 FromDBMod /= mod_logdb_mnesia_old, ToStats == [] ->
                     fun({User, _Count}, Acc) ->
-                        {ok, Msgs} = FromDBMod:get_user_messages_at(User, VHost, Date),
+                        {ok, Msgs} = FromDBMod:get_user_messages_at(binary_to_list(User), VHost, binary_to_list(Date)),
                         MAcc =
                           lists:foldl(fun(Msg, MFAcc) ->
                                           ok = ToDBMod:log_message(VHost, Msg),
@@ -891,7 +895,7 @@ copy_messages_int_tc([FromDBMod, ToDBMod, VHost, Date]) ->
                                                    % destination table is not empty
                 FromDBMod /= mod_logdb_mnesia_old, ToStats /= [] ->
                     fun({User, _Count}, Acc) ->
-                        {ok, ToMsgs} = ToDBMod:get_user_messages_at(User, VHost, Date),
+                        {ok, ToMsgs} = ToDBMod:get_user_messages_at(binary_to_list(User), VHost, binary_to_list(Date)),
                         lists:foreach(fun(#msg{timestamp=Tst}) when length(Tst) == 16 ->
                                             ets:insert(mod_logdb_temp, {Tst});
                                          % mysql, pgsql removes final zeros after decimal point
@@ -900,7 +904,7 @@ copy_messages_int_tc([FromDBMod, ToDBMod, VHost, Date]) ->
                                             [T] = io_lib:format("~.5f", [F]),
                                             ets:insert(mod_logdb_temp, {T})
                                       end, ToMsgs),
-                        {ok, Msgs} = FromDBMod:get_user_messages_at(User, VHost, Date),
+                        {ok, Msgs} = FromDBMod:get_user_messages_at(binary_to_list(User), VHost, binary_to_list(Date)),
                         MAcc =
                           lists:foldl(fun(#msg{timestamp=ToTimestamp} = Msg, MFAcc) ->
                                           case ets:member(mod_logdb_temp, ToTimestamp) of
@@ -922,7 +926,7 @@ copy_messages_int_tc([FromDBMod, ToDBMod, VHost, Date]) ->
                 true ->
                     fun({User, _Count}, Acc) ->
                         ToStats =
-                           case ToDBMod:get_user_messages_at(User, VHost, Date) of
+                           case ToDBMod:get_user_messages_at(binary_to_list(User), VHost, binary_to_list(Date)) of
                                 {ok, []} ->
                                   ok;
                                 {ok, ToMsgs} ->
@@ -937,7 +941,7 @@ copy_messages_int_tc([FromDBMod, ToDBMod, VHost, Date]) ->
                                 {error, _} ->
                                   ok
                            end,
-                        {ok, Msgs} = FromDBMod:get_user_messages_at(User, VHost, Date),
+                        {ok, Msgs} = FromDBMod:get_user_messages_at(binary_to_list(User), VHost, binary_to_list(Date)),
 
                         MAcc =
                           lists:foldl(
@@ -998,7 +1002,7 @@ copy_messages_int_tc([FromDBMod, ToDBMod, VHost, Date]) ->
         ?INFO_MSG("Stats are equal at ~p", [Date]);
       FromStatsS /= ToStatsS ->
         lists:foldl(CopyFun, 0, FromStats),
-        ok = ToDBMod:rebuild_stats_at(VHost, Date)
+        ok = ToDBMod:rebuild_stats_at(VHost, binary_to_list(Date))
         %timer:sleep(1000)
     end,
 
@@ -1717,53 +1721,56 @@ get_all_vh_users(Host, Server, Lang) ->
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 webadmin_menu(Acc, _Host, Lang) ->
-    [{"messages", ?T("Users Messages")} | Acc].
+    [{<<"messages">>, ?T(<<"Users Messages">>)} | Acc].
 
 webadmin_user(Acc, User, Server, Lang) ->
     Sett = get_user_settings(User, Server),
+    ?MYDEBUG("Sett = ~p", [Sett]),
     Log =
       case Sett#user_settings.dolog_default of
            false ->
-              ?INPUTT("submit", "dolog", "Log Messages");
+              ?INPUTT(<<"submit">>, <<"dolog">>, <<"Log Messages">>);
            true ->
-              ?INPUTT("submit", "donotlog", "Do Not Log Messages");
+              ?INPUTT(<<"submit">>, <<"donotlog">>, <<"Do Not Log Messages">>);
            _ -> []
       end,
-    Acc ++ [?XE("h3", [?ACT("messages/", "Messages"), ?C(" "), Log])].
+    Acc ++ [?XE(<<"h3">>, [?ACT(<<"messages/">>, <<"Messages">>), ?C(<<" ">>), Log])].
 
 webadmin_page(_, Host,
-              #request{path = ["messages"],
+              #request{path = [<<"messages">>],
                        q = Query,
-                       lang = Lang}) when is_list(Host) ->
+                       lang = Lang}) ->
     Res = vhost_messages_stats(Host, Query, Lang),
     {stop, Res};
 webadmin_page(_, Host,
-              #request{path = ["messages", Date],
+              #request{path = [<<"messages">>, Date],
                        q = Query,
-                       lang = Lang}) when is_list(Host) ->
+                       lang = Lang}) ->
     Res = vhost_messages_stats_at(Host, Query, Lang, Date),
     {stop, Res};
 webadmin_page(_, Host,
-              #request{path = ["user", U, "messages"],
+              #request{path = [<<"user">>, U, <<"messages">>],
                        q = Query,
                        lang = Lang}) ->
     Res = user_messages_stats(U, Host, Query, Lang),
     {stop, Res};
 webadmin_page(_, Host,
-              #request{path = ["user", U, "messages", Date],
+              #request{path = [<<"user">>, U, <<"messages">>, Date],
                        q = Query,
                        lang = Lang}) ->
     Res = mod_logdb:user_messages_stats_at(U, Host, Query, Lang, Date),
     {stop, Res};
-webadmin_page(Acc, _, _) -> Acc.
+webadmin_page(Acc, _Host, _R) -> Acc.
 
-user_parse_query(_, "dolog", User, Server, _Query) ->
+user_parse_query(_, <<"dolog">>, User, Server, _Query) ->
     Sett = get_user_settings(User, Server),
+    ?MYDEBUG("dolog Sett = ~p", [Sett]),
     % TODO: check returned value
     set_user_settings(User, Server, Sett#user_settings{dolog_default=true}),
     {stop, ok};
-user_parse_query(_, "donotlog", User, Server, _Query) ->
+user_parse_query(_, <<"donotlog">>, User, Server, _Query) ->
     Sett = get_user_settings(User, Server),
+    ?MYDEBUG("donolog Sett = ~p", [Sett]),
     % TODO: check returned value
     set_user_settings(User, Server, Sett#user_settings{dolog_default=false}),
     {stop, ok};
@@ -1788,40 +1795,43 @@ vhost_messages_stats(Server, Query, Lang) ->
     case Value of
          {'EXIT', CReason} ->
               ?ERROR_MSG("Failed to get_vhost_stats: ~p", [CReason]),
-              [?XC("h1", ?T("Error occupied while fetching list"))];
+              [?XC(<<"h1">>, ?T(<<"Error occupied while fetching list">>))];
          {error, GReason} ->
               ?ERROR_MSG("Failed to get_vhost_stats: ~p", [GReason]),
-              [?XC("h1", ?T("Error occupied while fetching list"))];
+              [?XC(<<"h1">>, ?T(<<"Error occupied while fetching list">>))];
          {ok, []} ->
-              [?XC("h1", ?T("No logged messages for ") ++ Server)];
+              [?XC(<<"h1">>, list_to_binary(io_lib:format(?T(<<"No logged messages for ~s">>), [Server])))];
          {ok, Dates} ->
               Fun = fun({Date, Count}) ->
-                         ID = jlib:encode_base64(binary_to_list(term_to_binary(Server++Date))),
-                         ?XE("tr",
-                          [?XE("td", [?INPUT("checkbox", "selected", ID)]),
-                           ?XE("td", [?AC(Date, Date)]),
-                           ?XC("td", integer_to_list(Count))
+                         DateBin = iolist_to_binary(Date),
+                         ID = jlib:encode_base64( << Server/binary, DateBin/binary >> ),
+                         ?XE(<<"tr">>,
+                          [?XAE(<<"td">>, [{<<"class">>, <<"valign">>}],
+                            [?INPUT(<<"checkbox">>, <<"selected">>, ID)]),
+                           ?XE(<<"td">>, [?AC(DateBin, DateBin)]),
+                           ?XC(<<"td">>, integer_to_binary(Count))
                           ])
                     end,
-              [?XC("h1", ?T("Logged messages for ") ++ Server)] ++
+
+              [?XC(<<"h1">>, list_to_binary(io_lib:format(?T(<<"Logged messages for ~s">>), [Server])))] ++
                case Res of
-                    ok -> [?CT("Submitted"), ?P];
-                    error -> [?CT("Bad format"), ?P];
+                    ok -> [?CT(<<"Submitted">>), ?P];
+                    error -> [?CT(<<"Bad format">>), ?P];
                     nothing -> []
                end ++
-               [?XAE("form", [{"action", ""}, {"method", "post"}],
-                [?XE("table",
-                 [?XE("thead",
-                  [?XE("tr",
-                   [?X("td"),
-                    ?XCT("td", "Date"),
-                    ?XCT("td", "Count")
+               [?XAE(<<"form">>, [{<<"action">>, <<"">>}, {<<"method">>, <<"post">>}],
+                [?XE(<<"table">>,
+                 [?XE(<<"thead">>,
+                  [?XE(<<"tr">>,
+                   [?X(<<"td">>),
+                    ?XCT(<<"td">>, <<"Date">>),
+                    ?XCT(<<"td">>, <<"Count">>)
                    ])]),
-                  ?XE("tbody",
+                  ?XE(<<"tbody">>,
                       lists:map(Fun, Dates)
                      )]),
                   ?BR,
-                  ?INPUTT("submit", "delete", "Delete Selected")
+                  ?INPUTT(<<"submit">>, <<"delete">>, <<"Delete Selected">>)
                 ])]
    end.
 
@@ -1832,12 +1842,12 @@ vhost_messages_stats_at(Server, Query, Lang, Date) ->
    case Value of
         {'EXIT', CReason} ->
              ?ERROR_MSG("Failed to get_vhost_stats_at: ~p", [CReason]),
-             [?XC("h1", ?T("Error occupied while fetching list"))];
+             [?XC(<<"h1">>, ?T(<<"Error occupied while fetching list">>))];
         {error, GReason} ->
              ?ERROR_MSG("Failed to get_vhost_stats_at: ~p", [GReason]),
-             [?XC("h1", ?T("Error occupied while fetching list"))];
+             [?XC(<<"h1">>, ?T(<<"Error occupied while fetching list">>))];
         {ok, []} ->
-             [?XC("h1", ?T("No logged messages for ") ++ Server ++ ?T(" at ") ++ Date)];
+             [?XC(<<"h1">>, list_to_binary(io_lib:format(?T(<<"No logged messages for ~s at ~s">>), [Server, Date])))];
         {ok, Users} ->
              Res = case catch vhost_messages_at_parse_query(Server, Date, Users, Query) of
                         {'EXIT', Reason} ->
@@ -1846,32 +1856,34 @@ vhost_messages_stats_at(Server, Query, Lang, Date) ->
                         VResult -> VResult
                    end,
              Fun = fun({User, Count}) ->
-                         ID = jlib:encode_base64(binary_to_list(term_to_binary(User++Server))),
-                         ?XE("tr",
-                          [?XE("td", [?INPUT("checkbox", "selected", ID)]),
-                           ?XE("td", [?AC("../user/"++User++"/messages/"++Date, User)]),
-                           ?XC("td", integer_to_list(Count))
+                         UserBin = iolist_to_binary(User),
+                         ID = jlib:encode_base64( << UserBin/binary, Server/binary >> ),
+                         ?XE(<<"tr">>,
+                          [?XAE(<<"td">>, [{<<"class">>, <<"valign">>}], 
+                            [?INPUT(<<"checkbox">>, <<"selected">>, ID)]),
+                           ?XE(<<"td">>, [?AC(<< <<"../user/">>/binary, UserBin/binary, <<"/messages/">>/binary, Date/binary >>, UserBin)]),
+                           ?XC(<<"td">>, integer_to_binary(Count))
                           ])
                    end,
-             [?XC("h1", ?T("Logged messages for ") ++ Server ++ ?T(" at ") ++ Date)] ++
+             [?XC(<<"h1">>, list_to_binary(io_lib:format(?T(<<"Logged messages for ~s at ~s">>), [Server, Date])))] ++
               case Res of
-                    ok -> [?CT("Submitted"), ?P];
-                    error -> [?CT("Bad format"), ?P];
+                    ok -> [?CT(<<"Submitted">>), ?P];
+                    error -> [?CT(<<"Bad format">>), ?P];
                     nothing -> []
               end ++
-              [?XAE("form", [{"action", ""}, {"method", "post"}],
-                [?XE("table",
-                 [?XE("thead",
-                  [?XE("tr",
-                   [?X("td"),
-                    ?XCT("td", "User"),
-                    ?XCT("td", "Count")
+              [?XAE(<<"form">>, [{<<"action">>, <<"">>}, {<<"method">>, <<"post">>}],
+                [?XE(<<"table">>,
+                 [?XE(<<"thead">>,
+                  [?XE(<<"tr">>,
+                   [?X(<<"td">>),
+                    ?XCT(<<"td">>, <<"User">>),
+                    ?XCT(<<"td">>, <<"Count">>)
                    ])]),
-                  ?XE("tbody",
+                  ?XE(<<"tbody">>,
                       lists:map(Fun, Users)
                      )]),
                   ?BR,
-                  ?INPUTT("submit", "delete", "Delete Selected")
+                  ?INPUTT(<<"submit">>, <<"delete">>, <<"Delete Selected">>)
                 ])]
    end.
 
@@ -1891,41 +1903,42 @@ user_messages_stats(User, Server, Query, Lang) ->
    case Value of
         {'EXIT', CReason} ->
             ?ERROR_MSG("Failed to get_user_stats: ~p", [CReason]),
-            [?XC("h1", ?T("Error occupied while fetching days"))];
+            [?XC(<<"h1">>, ?T(<<"Error occupied while fetching days">>))];
         {error, GReason} ->
             ?ERROR_MSG("Failed to get_user_stats: ~p", [GReason]),
-            [?XC("h1", ?T("Error occupied while fetching days"))];
+            [?XC(<<"h1">>, ?T(<<"Error occupied while fetching days">>))];
         {ok, []} ->
-            [?XC("h1", ?T("No logged messages for ") ++ Jid)];
+            [?XC(<<"h1">>, list_to_binary(io_lib:format(?T(<<"No logged messages for ~s">>), [Jid])))];
         {ok, Dates} ->
             Fun = fun({Date, Count}) ->
-                      ID = jlib:encode_base64(binary_to_list(term_to_binary(User++Date))),
-                      ?XE("tr",
-                       [?XE("td", [?INPUT("checkbox", "selected", ID)]),
-                        ?XE("td", [?AC(Date, Date)]),
-                        ?XC("td", integer_to_list(Count))
+                      DateBin = iolist_to_binary(Date),
+                      ID = jlib:encode_base64( << User/binary, DateBin/binary >> ),
+                      ?XE(<<"tr">>,
+                       [?XAE(<<"td">>, [{<<"class">>, <<"valign">>}],
+                         [?INPUT(<<"checkbox">>, <<"selected">>, ID)]),
+                        ?XE(<<"td">>, [?AC(DateBin, DateBin)]),
+                        ?XC(<<"td">>, iolist_to_binary(integer_to_list(Count)))
                        ])
-                       %[?AC(Date, Date ++ " (" ++ integer_to_list(Count) ++ ")"), ?BR]
                   end,
-            [?XC("h1", ?T("Logged messages for ") ++ Jid)] ++
+            [?XC(<<"h1">>, list_to_binary(io_lib:format(?T("Logged messages for ~s"), [Jid])))] ++
              case Res of
-                   ok -> [?CT("Submitted"), ?P];
-                   error -> [?CT("Bad format"), ?P];
+                   ok -> [?CT(<<"Submitted">>), ?P];
+                   error -> [?CT(<<"Bad format">>), ?P];
                    nothing -> []
              end ++
-             [?XAE("form", [{"action", ""}, {"method", "post"}],
-              [?XE("table",
-               [?XE("thead",
-                [?XE("tr",
-                 [?X("td"),
-                  ?XCT("td", "Date"),
-                  ?XCT("td", "Count")
+             [?XAE(<<"form">>, [{<<"action">>, <<"">>}, {<<"method">>, <<"post">>}],
+              [?XE(<<"table">>,
+               [?XE(<<"thead">>,
+                [?XE(<<"tr">>,
+                 [?X(<<"td">>),
+                  ?XCT(<<"td">>, <<"Date">>),
+                  ?XCT(<<"td">>, <<"Count">>)
                  ])]),
-                ?XE("tbody",
+                ?XE(<<"tbody">>,
                     lists:map(Fun, Dates)
                    )]),
                 ?BR,
-                ?INPUTT("submit", "delete", "Delete Selected")
+                ?INPUTT(<<"submit">>, <<"delete">>, <<"Delete Selected">>)
               ])]
     end.
 
@@ -1947,17 +1960,17 @@ user_messages_stats_at(User, Server, Query, Lang, Date) ->
    case Value of
         {'EXIT', CReason} ->
            ?ERROR_MSG("Failed to get_user_messages_at: ~p", [CReason]),
-           [?XC("h1", ?T("Error occupied while fetching messages"))];
+           [?XC(<<"h1">>, ?T(<<"Error occupied while fetching messages">>))];
         {error, GReason} ->
            ?ERROR_MSG("Failed to get_user_messages_at: ~p", [GReason]),
-           [?XC("h1", ?T("Error occupied while fetching messages"))];
+           [?XC(<<"h1">>, ?T(<<"Error occupied while fetching messages">>))];
         {ok, []} ->
-           [?XC("h1", ?T("No logged messages for ") ++ Jid ++ ?T(" at ") ++ Date)];
+           [?XC(<<"h1">>, list_to_binary(io_lib:format(?T(<<"No logged messages for ~s at ~s">>), [Jid, Date])))];
         {ok, User_messages} ->
            Res =  case catch user_messages_at_parse_query(Server,
-                                                                    Date,
-                                                                    User_messages,
-                                                                    Query) of
+                                                          Date,
+                                                          User_messages,
+                                                          Query) of
                        {'EXIT', Reason} ->
                             ?ERROR_MSG("~p", [Reason]),
                             error;
@@ -1968,7 +1981,7 @@ user_messages_stats_at(User, Server, Query, Lang, Date) ->
            UserRoster =
                  lists:map(fun(Item) ->
                               {jlib:jid_to_string(Item#roster.jid), Item#roster.name}
-                           end, UR),
+                          end, UR),
 
            UniqUsers = lists:foldl(fun(#msg{peer_name=PName, peer_server=PServer}, List) ->
                                  ToAdd = PName++"@"++PServer,
@@ -1979,31 +1992,31 @@ user_messages_stats_at(User, Server, Query, Lang, Date) ->
                                end, [], User_messages),
 
            % Users to filter (sublist of UniqUsers)
-           CheckedUsers = case lists:keysearch("filter", 1, Query) of
+           CheckedUsers = case lists:keysearch(<<"filter">>, 1, Query) of
                            {value, _} ->
                               lists:filter(fun(UFUser) ->
-                                                ID = jlib:encode_base64(binary_to_list(term_to_binary(UFUser))),
-                                                lists:member({"selected", ID}, Query)
+                                                ID = jlib:encode_base64(term_to_binary(UFUser)),
+                                                lists:member({<<"selected">>, ID}, Query)
                                            end, UniqUsers);
                            false -> []
                          end,
 
            % UniqUsers in html (noone selected -> everyone selected)
            Users = lists:map(fun(UHUser) ->
-                                ID = jlib:encode_base64(binary_to_list(term_to_binary(UHUser))),
+                                ID = jlib:encode_base64(term_to_binary(UHUser)),
                                 Input = case lists:member(UHUser, CheckedUsers) of
-                                         true -> [?INPUTC("checkbox", "selected", ID)];
-                                         false when CheckedUsers == [] -> [?INPUTC("checkbox", "selected", ID)];
-                                         false -> [?INPUT("checkbox", "selected", ID)]
+                                         true -> [?INPUTC(<<"checkbox">>, <<"selected">>, ID)];
+                                         false when CheckedUsers == [] -> [?INPUTC(<<"checkbox">>, <<"selected">>, ID)];
+                                         false -> [?INPUT(<<"checkbox">>, <<"selected">>, ID)]
                                         end,
                                 Nick =
                                    case search_user_nick(UHUser, UserRoster) of
-                                        nothing -> "";
-                                        N -> " ("++ N ++")"
+                                        nothing -> <<"">>;
+                                        N -> iolist_to_binary( " ("++ N ++")" )
                                    end,
-                                ?XE("tr",
-                                 [?XE("td", Input),
-                                  ?XC("td", UHUser++Nick)])
+                                ?XE(<<"tr">>,
+                                 [?XE(<<"td">>, Input),
+                                  ?XC(<<"td">>, iolist_to_binary(UHUser++Nick))])
                              end, lists:sort(UniqUsers)),
            % Messages to show (based on Users)
            User_messages_filtered = case CheckedUsers of
@@ -2019,15 +2032,10 @@ user_messages_stats_at(User, Server, Query, Lang, Date) ->
                                peer_name=PName, peer_server=PServer, peer_resource=PRes,
                                type=Type,
                                body=Body}) ->
-                      TextRaw = case Subject of
-                                     "" -> Body;
-                                     _ -> [?T("Subject"),": ",Subject,"<br>", Body]
-                                end,
-                      ID = jlib:encode_base64(binary_to_list(term_to_binary(Timestamp))),
-                      % replace \n with <br>
-                      Text = lists:map(fun(10) -> "<br>";
-                                           (A) -> A
-                                        end, TextRaw),
+                      Text = case Subject of
+                                  "" -> iolist_to_binary(Body);
+                                  _ -> iolist_to_binary([binary_to_list(?T(<<"Subject">>)) ++ ": " ++ Subject ++ "\n" ++ Body])
+                             end,
                       Resource = case PRes of
                                       [] -> [];
                                       undefined -> [];
@@ -2043,45 +2051,46 @@ user_messages_stats_at(User, Server, Query, Lang, Date) ->
                                    PName++"@"++PServer;
                               N -> N
                          end,
-                      ?XE("tr",
-                       [?XE("td", [?INPUT("checkbox", "selected", ID)]),
-                        ?XC("td", convert_timestamp(Timestamp)),
-                        ?XC("td", atom_to_list(Direction)++": "++UserNick),
-                        ?XC("td", Text)])
+                      ID = jlib:encode_base64(term_to_binary(Timestamp)),
+                      ?XE(<<"tr">>,
+                       [?XE(<<"td">>, [?INPUT(<<"checkbox">>, <<"selected">>, ID)]),
+                        ?XC(<<"td">>, iolist_to_binary(convert_timestamp(Timestamp))),
+                        ?XC(<<"td">>, iolist_to_binary(atom_to_list(Direction)++": "++UserNick)),
+                        ?XE(<<"td">>, [?XC(<<"pre">>, Text)])])
                  end,
            % Filtered user messages in html
            Msgs = lists:map(Msgs_Fun, lists:sort(User_messages_filtered)),
 
-           [?XC("h1", ?T("Logged messages for ") ++ Jid ++ ?T(" at ") ++ Date)] ++
+           [?XC(<<"h1">>, list_to_binary(io_lib:format(?T(<<"Logged messages for ~s at ~s">>), [Jid, Date])))] ++
             case Res of
-                 ok -> [?CT("Submitted"), ?P];
-                 error -> [?CT("Bad format"), ?P];
+                 ok -> [?CT(<<"Submitted">>), ?P];
+                 error -> [?CT(<<"Bad format">>), ?P];
                  nothing -> []
             end ++
-            [?XAE("form", [{"action", ""}, {"method", "post"}],
-             [?XE("table",
-                  [?XE("thead",
-                       [?X("td"),
-                        ?XCT("td", "User")
+            [?XAE(<<"form">>, [{<<"action">>, <<"">>}, {<<"method">>, <<"post">>}],
+             [?XE(<<"table">>,
+                  [?XE(<<"thead">>,
+                       [?X(<<"td">>),
+                        ?XCT(<<"td">>, <<"User">>)
                        ]
                       ),
-                   ?XE("tbody",
+                   ?XE(<<"tbody">>,
                         Users
                       )]),
-              ?INPUTT("submit", "filter", "Filter Selected")
+              ?INPUTT(<<"submit">>, <<"filter">>, <<"Filter Selected">>)
              ] ++
-             [?XE("table",
-                  [?XE("thead",
-                       [?XE("tr",
-                        [?X("td"),
-                         ?XCT("td", "Date, Time"),
-                         ?XCT("td", "Direction: Jid"),
-                         ?XCT("td", "Body")
+             [?XE(<<"table">>,
+                  [?XE(<<"thead">>,
+                       [?XE(<<"tr">>,
+                        [?X(<<"td">>),
+                         ?XCT(<<"td">>, <<"Date, Time">>),
+                         ?XCT(<<"td">>, <<"Direction: Jid">>),
+                         ?XCT(<<"td">>, <<"Body">>)
                         ])]),
-                   ?XE("tbody",
+                   ?XE(<<"tbody">>,
                         Msgs
                       )]),
-              ?INPUTT("submit", "delete", "Delete Selected"),
+              ?INPUTT(<<"submit">>, <<"delete">>, <<"Delete Selected">>),
               ?BR
              ]
             )]

@@ -47,7 +47,7 @@
 % replace "." with "_"
 escape_vhost(VHost) -> lists:map(fun(46) -> 95;
                                     (A) -> A
-                                 end, VHost).
+                                 end, binary_to_list(VHost)).
 prefix() ->
    "`logdb_".
 
@@ -103,11 +103,11 @@ stop(VHost) ->
 init([VHost, Opts]) ->
    crypto:start(),
 
-   Server = gen_mod:get_opt(server, Opts, "localhost"),
-   Port = gen_mod:get_opt(port, Opts, 3306),
-   DB = gen_mod:get_opt(db, Opts, "logdb"),
-   User = gen_mod:get_opt(user, Opts, "root"),
-   Password = gen_mod:get_opt(password, Opts, ""),
+   Server = gen_mod:get_opt(server, Opts, fun(A) -> A end, <<"localhost">>),
+   Port = gen_mod:get_opt(port, Opts, fun(A) -> A end, 3306),
+   DB = gen_mod:get_opt(db, Opts, fun(A) -> A end, <<"logdb">>),
+   User = gen_mod:get_opt(user, Opts, fun(A) -> A end, <<"root">>),
+   Password = gen_mod:get_opt(password, Opts, fun(A) -> A end, <<"">>),
 
    St = #state{vhost=VHost,
                server=Server, port=Port, db=DB,
@@ -141,11 +141,13 @@ open_mysql_connection(#state{server=Server, port=Port, db=DB,
                  ?MYDEBUG(Format, Argument)
             end,
    ?INFO_MSG("Opening mysql connection ~s@~s:~p/~s", [DBUser, Server, Port, DB]),
-   mysql_conn:start(Server, Port, DBUser, Password, DB, [65536, 131072], LogFun).
+   p1_mysql_conn:start(binary_to_list(Server), Port,
+                       binary_to_list(DBUser), binary_to_list(Password),
+                       binary_to_list(DB), LogFun).
 
 close_mysql_connection(DBRef) ->
    ?MYDEBUG("Closing ~p mysql connection", [DBRef]),
-   mysql_conn:stop(DBRef).
+   catch p1_mysql_conn:stop(DBRef).
 
 handle_call({rebuild_stats_at, Date}, _From, #state{dbref=DBRef, vhost=VHost}=State) ->
     Reply = rebuild_stats_at_int(DBRef, VHost, Date),
@@ -330,7 +332,7 @@ handle_call({set_user_settings, User, #user_settings{dolog_default=DoLogDef,
                        ?MYDEBUG("New settings for ~s@~s", [User, VHost]),
                        ok;
                    {error, Reason} ->
-                       case ejabberd_regexp:run(Reason, "#23000") of
+                       case ejabberd_regexp:run(iolist_to_binary(Reason), <<"#23000">>) of
                             % Already exists
                             match ->
                                 ok;
@@ -361,20 +363,20 @@ handle_cast({log_message, Msg}, #state{dbref=DBRef, vhost=VHost}=State) ->
             Query = [ "CALL ",logmessage_name(VHost)," "
                          "('", TableName, "',",
                          "'", Date, "',",
-                         "'", Msg#msg.owner_name, "',",
-                         "'", Msg#msg.peer_name, "',",
-                         "'", Msg#msg.peer_server, "',",
-                         "'", ejabberd_odbc:escape(Msg#msg.peer_resource), "',",
+                         "'", binary_to_list(Msg#msg.owner_name), "',",
+                         "'", binary_to_list(Msg#msg.peer_name), "',",
+                         "'", binary_to_list(Msg#msg.peer_server), "',",
+                         "'", binary_to_list( ejabberd_odbc:escape(Msg#msg.peer_resource) ), "',",
                          "'", atom_to_list(Msg#msg.direction), "',",
-                         "'", Msg#msg.type, "',",
-                         "'", ejabberd_odbc:escape(Msg#msg.subject), "',",
-                         "'", ejabberd_odbc:escape(Msg#msg.body), "',",
+                         "'", binary_to_list(Msg#msg.type), "',",
+                         "'", binary_to_list( ejabberd_odbc:escape(Msg#msg.subject) ), "',",
+                         "'", binary_to_list( ejabberd_odbc:escape(Msg#msg.body) ), "',",
                          "'", Msg#msg.timestamp, "');"],
 
             case sql_query_internal(DBRef, Query) of
                  {updated, _} ->
-                    ?MYDEBUG("Logged ok for ~p, peer: ~p", [Msg#msg.owner_name++"@"++VHost,
-                                                            Msg#msg.peer_name++"@"++Msg#msg.peer_server]),
+                    ?MYDEBUG("Logged ok for ~s, peer: ~s", [ [Msg#msg.owner_name, <<"@">>, VHost],
+                                                             [Msg#msg.peer_name, <<"@">>, Msg#msg.peer_server] ]),
                     ok;
                  {error, _Reason} ->
                     error
@@ -542,9 +544,10 @@ rebuild_stats_at_int(DBRef, VHost, Date) ->
                       Count = sql_query_internal(DBRef, ["SELECT count(*) FROM ",Table,";"]),
                       case Count of
                         {data, [["0"]]} ->
-                           {updated, _} = sql_query_internal(DBRef, ["DROP VIEW IF EXISTS ",view_table(VHost,Date),";"]),
                            {updated, _} = sql_query_internal(DBRef, ["DROP TABLE ",Table,";"]),
-                           {updated, _} = sql_query_internal(DBRef, ["LOCK TABLE ",STable," WRITE;"]),
+                           sql_query_internal(DBRef, ["UNLOCK TABLES;"]),
+                           {updated, _} = sql_query_internal(DBRef, ["DROP VIEW IF EXISTS ",view_table(VHost,Date),";"]),
+                           {updated, _} = sql_query_internal(DBRef, ["LOCK TABLE ",STable," WRITE, ",TempTable," WRITE;"]),
                            {updated, _} = sql_query_internal(DBRef, DQuery),
                            ok;
                         _ ->
@@ -703,7 +706,7 @@ create_stats_table(#state{dbref=DBRef, vhost=VHost}=State) ->
             rebuild_all_stats_int(State),
             ok;
          {error, Reason} ->
-            case ejabberd_regexp:run(Reason, "#42S01") of
+            case ejabberd_regexp:run(iolist_to_binary(Reason), <<"#42S01">>) of
                  match ->
                    ?MYDEBUG("Stats table for ~p already exists", [VHost]),
                    CheckQuery = ["SHOW COLUMNS FROM ",SName," LIKE 'peer_%_id';"],
@@ -817,16 +820,16 @@ sql_query_internal(DBRef, Query) ->
 
 sql_query_internal_silent(DBRef, Query) ->
     ?MYDEBUG("DOING: \"~s\"", [lists:append(Query)]),
-    get_result(mysql_conn:fetch(DBRef, Query, self(), ?MYSQL_TIMEOUT)).
+    get_result(p1_mysql_conn:fetch(DBRef, Query, self(), ?MYSQL_TIMEOUT)).
 
 get_result({updated, MySQLRes}) ->
-    {updated, mysql:get_result_affected_rows(MySQLRes)};
+    {updated, p1_mysql:get_result_affected_rows(MySQLRes)};
 get_result({data, MySQLRes}) ->
-    {data, mysql:get_result_rows(MySQLRes)};
+    {data, p1_mysql:get_result_rows(MySQLRes)};
 get_result({error, "query timed out"}) ->
     {error, "query timed out"};
 get_result({error, MySQLRes}) ->
-    Reason = mysql:get_result_reason(MySQLRes),
+    Reason = p1_mysql:get_result_reason(MySQLRes),
     {error, Reason}.
 
 get_user_id(DBRef, VHost, User) ->
@@ -842,7 +845,7 @@ get_user_id(DBRef, VHost, User) ->
                    DBIdNew;
                {error, Reason} ->
                    % this can be in clustered environment
-                   match = ejabberd_regexp:run(Reason, "#23000"),
+                   match = ejabberd_regexp:run(iolist_to_binary(Reason), <<"#23000">>),
                    ?ERROR_MSG("Duplicate key name for ~p", [User]),
                    {data, [[ClID]]} = sql_query_internal(DBRef, SQuery),
                    ClID
