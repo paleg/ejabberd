@@ -1849,8 +1849,8 @@ vhost_messages_stats_at(Server, Query, Lang, Date) ->
              [?XC(<<"h1">>, ?T(<<"Error occupied while fetching list">>))];
         {ok, []} ->
              [?XC(<<"h1">>, list_to_binary(io_lib:format(?T(<<"No logged messages for ~s at ~s">>), [Server, Date])))];
-        {ok, Users} ->
-             Res = case catch vhost_messages_at_parse_query(Server, Date, Users, Query) of
+        {ok, Stats} ->
+             Res = case catch vhost_messages_at_parse_query(Server, Date, Stats, Query) of
                         {'EXIT', Reason} ->
                             ?ERROR_MSG("~p", [Reason]),
                             error;
@@ -1881,7 +1881,7 @@ vhost_messages_stats_at(Server, Query, Lang, Date) ->
                     ?XCT(<<"td">>, <<"Count">>)
                    ])]),
                   ?XE(<<"tbody">>,
-                      lists:map(Fun, Users)
+                      lists:map(Fun, Stats)
                      )]),
                   ?BR,
                   ?INPUTT(<<"submit">>, <<"delete">>, <<"Delete Selected">>)
