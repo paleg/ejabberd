@@ -103,7 +103,11 @@ start_link(VHost, Opts) ->
 
 init([VHost, Opts]) ->
     process_flag(trap_exit, true),
-    DBs = gen_mod:get_opt(dbs, Opts, fun(A) -> A end, [{mnesia, []}]),
+    DBsRaw = gen_mod:get_opt(dbs, Opts, fun(A) -> A end, [{mnesia, []}]),
+    DBs = case lists:keysearch(mnesia, 1, DBsRaw) of
+               false -> lists:append(DBsRaw, [{mnesia,[]}]);
+               DBsResult -> DBsResult
+          end,
     VHostDB = gen_mod:get_opt(vhosts, Opts, fun(A) -> A end, [{VHost, mnesia}]),
     % 10 is default becouse of using in clustered environment
     PollUsersSettings = gen_mod:get_opt(poll_users_settings, Opts, fun(A) -> A end, 10),
