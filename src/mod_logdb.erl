@@ -613,8 +613,8 @@ purge_old_records(VHost, Days) ->
     DateDiff = list_to_integer(Days)*24*60*60,
     ?MYDEBUG("Purging tables older than ~s days", [Days]),
     lists:foreach(fun(Date) ->
-                    [Year, Month, Day] = ejabberd_regexp:split(Date, "[^0-9]+"),
-                    DateInSec = calendar:datetime_to_gregorian_seconds({{list_to_integer(Year), list_to_integer(Month), list_to_integer(Day)}, {0,0,1}}),
+                    [Year, Month, Day] = ejabberd_regexp:split(iolist_to_binary(Date), <<"[^0-9]+">>),
+                    DateInSec = calendar:datetime_to_gregorian_seconds({{binary_to_integer(Year), binary_to_integer(Month), binary_to_integer(Day)}, {0,0,1}}),
                     if
                      (DateNow - DateInSec) > DateDiff ->
                         gen_server:call(Proc, {delete_messages_at, Date});
@@ -627,8 +627,8 @@ purge_old_records(VHost, Days) ->
 sort_stats(Stats) ->
     % Stats = [{"2003-4-15",1}, {"2006-8-18",1}, ... ]
     CFun = fun({TableName, Count}) ->
-                 [Year, Month, Day] = ejabberd_regexp:split(TableName, "[^0-9]+"),
-                 { calendar:datetime_to_gregorian_seconds({{list_to_integer(Year), list_to_integer(Month), list_to_integer(Day)}, {0,0,1}}), Count }
+                 [Year, Month, Day] = ejabberd_regexp:split(iolist_to_binary(TableName), <<"[^0-9]+">>),
+                 { calendar:datetime_to_gregorian_seconds({{binary_to_integer(Year), binary_to_integer(Month), binary_to_integer(Day)}, {0,0,1}}), Count }
            end,
     % convert to [{63364377601,1}, {63360662401,1}, ... ]
     CStats = lists:map(CFun, Stats),
@@ -1041,7 +1041,7 @@ string_to_list(null) ->
 string_to_list([]) ->
     [];
 string_to_list(String) ->
-    ejabberd_regexp:split(String, "\n").
+    ejabberd_regexp:split(iolist_to_binary(String), <<"\n">>).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
@@ -1133,9 +1133,9 @@ get_local_items(_Host, ["mod_logdb_users", [$@ | Diap]], Server, Lang) ->
         Users ->
             SUsers = lists:sort([{S, U} || {U, S} <- Users]),
             case catch begin
-                           [S1, S2] = ejabberd_regexp:split(Diap, "-"),
-                           N1 = list_to_integer(S1),
-                           N2 = list_to_integer(S2),
+                           [S1, S2] = ejabberd_regexp:split(Diap, <<"-">>),
+                           N1 = binary_to_integer(S1),
+                           N2 = binary_to_integer(S2),
                            Sub = lists:sublist(SUsers, N1, N2 - N1 + 1),
                            lists:map(fun({S, U}) ->
                                       ?NODE(U ++ "@" ++ S, "mod_logdb_users/" ++ U ++ "@" ++ S)
