@@ -120,7 +120,7 @@ init([VHost, Opts]) ->
              end,
     {value, {DBName, DBOpts}} = lists:keysearch(DBName, 1, DBs),
 
-    ?MYDEBUG("Starting mod_logdb for ~p with ~p backend", [VHost, DBName]),
+    ?MYDEBUG("Starting mod_logdb for ~s with ~s backend", [VHost, DBName]),
 
     DBMod = list_to_atom(atom_to_list(?MODULE) ++ "_" ++ atom_to_list(DBName)),
 
@@ -224,12 +224,10 @@ handle_call({get_user_settings, User}, _From, #state{dbmod=_DBMod, vhost=VHost}=
 % TODO: remove User ??
 handle_call({set_user_settings, User, GSet}, _From, #state{dbmod=DBMod, vhost=VHost}=State) ->
     Set = GSet#user_settings{owner_name=User},
-    ?MYDEBUG("User = ~p, Set = ~p", [User, Set]),
     Reply =
        case ets:match_object(ets_settings_table(VHost),
                              #user_settings{owner_name=User, _='_'}) of
             [Set] ->
-                ?MYDEBUG("Settings is equal", []),
                 ok;
             _ ->
                 case DBMod:set_user_settings(binary_to_list(User), VHost, Set) of
@@ -291,7 +289,6 @@ handle_call(Msg, _From, State) ->
 
 % ejabberd_hooks call
 handle_cast({addlog, Direction, Owner, Peer, Packet}, #state{dbmod=DBMod, vhost=VHost}=State) ->
-    ?MYDEBUG("addlog: ~p ~p ~p ~p ~p", [Owner, Peer, Packet, Direction, State]),
     case filter(Owner, Peer, State) of
          true ->
               case catch packet_parse(Owner, Peer, Packet, Direction, State) of
@@ -471,7 +468,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % TODO: change to/from to list as sql stores it as list
 send_packet(Owner, Peer, P) ->
-    ?MYDEBUG("send_packet: ~p ~p ~p", [Owner, Peer, P]),
     VHost = Owner#jid.lserver,
     Proc = gen_mod:get_module_proc(VHost, ?PROCNAME),
     gen_server:cast(Proc, {addlog, to, Owner, Peer, P}).
@@ -730,7 +726,6 @@ user_messages_at_parse_query(VHost, Date, Msgs, Query) ->
                                    ID = jlib:encode_base64(term_to_binary(Msg#msg.timestamp)),
                                    lists:member({<<"selected">>, ID}, Query)
                               end, Msgs),
-             ?MYDEBUG("PMsgs = ~p", [PMsgs]),
              Proc = gen_mod:get_module_proc(VHost, ?PROCNAME),
              gen_server:call(Proc, {delete_messages_by_user_at, PMsgs, Date}, ?CALL_TIMEOUT);
          false ->
@@ -1734,7 +1729,6 @@ webadmin_menu(Acc, _Host, Lang) ->
 
 webadmin_user(Acc, User, Server, Lang) ->
     Sett = get_user_settings(User, Server),
-    ?MYDEBUG("Sett = ~p", [Sett]),
     Log =
       case Sett#user_settings.dolog_default of
            false ->
@@ -1773,13 +1767,11 @@ webadmin_page(Acc, _Host, _R) -> Acc.
 
 user_parse_query(_, <<"dolog">>, User, Server, _Query) ->
     Sett = get_user_settings(User, Server),
-    ?MYDEBUG("dolog Sett = ~p", [Sett]),
     % TODO: check returned value
     set_user_settings(User, Server, Sett#user_settings{dolog_default=true}),
     {stop, ok};
 user_parse_query(_, <<"donotlog">>, User, Server, _Query) ->
     Sett = get_user_settings(User, Server),
-    ?MYDEBUG("donolog Sett = ~p", [Sett]),
     % TODO: check returned value
     set_user_settings(User, Server, Sett#user_settings{dolog_default=false}),
     {stop, ok};
