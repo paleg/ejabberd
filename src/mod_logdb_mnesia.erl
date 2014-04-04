@@ -43,7 +43,7 @@ prefix() ->
    "logdb_".
 
 suffix(VHost) ->
-   "_" ++ VHost.
+   "_" ++ binary_to_list(VHost).
 
 stats_table(VHost) ->
    list_to_atom(prefix() ++ "stats" ++ suffix(VHost)).
@@ -160,7 +160,7 @@ handle_call({get_vhost_stats_at, Date}, _From, #state{vhost=VHost}=State) ->
     Reply =
       case mnesia:transaction(Fun) of
            {atomic, Result} ->
-                     {ok, lists:reverse(lists:keysort(2, [{User, Count} || [User, Count] <- Result]))};
+                     {ok, lists:reverse(lists:keysort(2, [{iolist_to_binary(User), Count} || [User, Count] <- Result]))};
            {aborted, Reason} ->
                      {error, Reason}
       end,
@@ -291,8 +291,18 @@ drop_user(User, VHost) ->
 % internals
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-log_message_int(VHost, #msg{timestamp=Timestamp}=Msg) ->
+log_message_int(VHost, #msg{timestamp=Timestamp}=MsgBin) ->
     Date = mod_logdb:convert_timestamp_brief(Timestamp),
+
+    Msg = #msg{timestamp     = MsgBin#msg.timestamp,
+               owner_name    = binary_to_list(MsgBin#msg.owner_name),
+               peer_name     = binary_to_list(MsgBin#msg.peer_name),
+               peer_server   = binary_to_list(MsgBin#msg.peer_server),
+               peer_resource = binary_to_list(MsgBin#msg.peer_resource),
+               direction     = MsgBin#msg.direction,
+               type          = binary_to_list(MsgBin#msg.type),
+               subject       = binary_to_list(MsgBin#msg.subject),
+               body          = binary_to_list(MsgBin#msg.body)},
 
     ATable = table_name(VHost, Date),
     Fun = fun() ->
@@ -308,15 +318,15 @@ log_message_int(VHost, #msg{timestamp=Timestamp}=Msg) ->
                      ?ERROR_MSG("Failed to log message: ~p", [CReason]),
                      error;
                   {atomic, ok} ->
-                     ?MYDEBUG("Created msg table for ~p at ~p", [VHost, Date]),
-                     log_message_int(VHost, Msg)
+                     ?MYDEBUG("Created msg table for ~s at ~s", [VHost, Date]),
+                     log_message_int(VHost, MsgBin)
              end;
          {aborted, TReason} ->
              ?ERROR_MSG("Failed to log message: ~p", [TReason]),
              error;
          {atomic, _} ->
-             ?MYDEBUG("Logged ok for ~p, peer: ~p", [Msg#msg.owner_name++"@"++VHost,
-                                                    Msg#msg.peer_name++"@"++Msg#msg.peer_server]),
+             ?MYDEBUG("Logged ok for ~s, peer: ~s", [ [Msg#msg.owner_name, <<"@">>, VHost],
+                                                      [Msg#msg.peer_name, <<"@">>, Msg#msg.peer_server] ]),
              increment_user_stats(Msg#msg.owner_name, VHost, Date)
     end.
 
@@ -358,12 +368,12 @@ increment_user_stats(Owner, VHost, Date) ->
 get_dates_int(VHost) ->
     Tables = mnesia:system_info(tables),
     lists:foldl(fun(ATable, Dates) ->
-                    Table = atom_to_list(ATable),
-                    case ejabberd_regexp:run(Table, VHost++"$") of
+                    Table = term_to_binary(ATable),
+                    case ejabberd_regexp:run( Table, << VHost/binary, <<"$">>/binary >> ) of
                          match ->
                             case re:run(Table, "_[0-9]+-[0-9]+-[0-9]+_") of
                                  {match, [{S, E}]} ->
-                                     lists:append(Dates, [lists:sublist(Table,S+1,E-2)]);
+                                     lists:append(Dates, [lists:sublist(binary_to_list(Table), S+2, E-2)]);
                                  nomatch ->
                                      Dates
                             end;
@@ -393,12 +403,12 @@ rebuild_stats_at_int(VHost, Date) ->
     case mnesia:transaction(fun() ->
                                mnesia:write_lock_table(Table),
                                mnesia:write_lock_table(STable),
+                               % Delete all stats for VHost at Date
+                               mnesia:foldl(DFun, [], STable),
                                % Calc stats for VHost at Date
                                case mnesia:foldl(CFun, [], Table) of
                                     [] -> empty;
                                     AStats ->
-                                      % Delete all stats for VHost at Date
-                                      mnesia:foldl(DFun, [], STable),
                                       % Write new calc'ed stats
                                       lists:foreach(fun({Owner, Count}) ->
                                                         WStat = #stats{user=Owner, at=Date, count=Count},
