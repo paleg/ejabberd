@@ -374,7 +374,10 @@ handle_info(start, #state{dbmod=DBMod, vhost=VHost}=State) ->
            MonRef = erlang:monitor(process, SPid),
 
            ets:new(ets_settings_table(VHost), [named_table,public,set,{keypos, #user_settings.owner_name}]),
-           {ok, DoLog} = DBMod:get_users_settings(VHost),
+           DoLog = case DBMod:get_users_settings(VHost) of
+                        {ok, Settings} -> [Sett#user_settings{owner_name = iolist_to_binary(Sett#user_settings.owner_name)} || Sett <- Settings];
+                        {error, _Reason} -> []
+                   end,
            ets:insert(ets_settings_table(VHost), DoLog),
 
            TrefPurge = set_purge_timer(State#state.purge_older_days),
