@@ -83,7 +83,7 @@ CfgDeps = lists:flatmap(
             fun({mysql, true}) ->
                     [{p1_mysql, ".*", {git, "git://github.com/paleg/mysql", {branch, "multi"}}}];
                ({pgsql, true}) ->
-                    [{p1_pgsql, ".*", {git, "git://github.com/processone/pgsql"}}];
+                    [{p1_pgsql, ".*", {git, "git://github.com/paleg/pgsql", {branch, "errordescr_fix"}}}];
                ({pam, true}) ->
                     [{p1_pam, ".*", {git, "git://github.com/processone/epam"}}];
                ({zlib, true}) ->
