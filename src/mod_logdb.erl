@@ -527,8 +527,9 @@ packet_parse(Owner, Peer, Packet, Direction, State) ->
          Body_xml ->
            Message_type =
               case xml:get_tag_attr_s(<<"type">>, Packet) of
-                   [] -> <<"normal">>;
-                   MType -> MType
+                   <<"error">> ->   throw(ignore);
+                   []          ->   <<"normal">>;
+                   MType       ->   MType
               end,
 
            case Message_type of
