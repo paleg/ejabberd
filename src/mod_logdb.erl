@@ -798,14 +798,15 @@ vhost_messages_at_parse_query(VHost, Date, Stats, Query) ->
          {value, _} ->
              PStats = lists:filter(
                               fun({User, _Count}) ->
-                                   ID = jlib:encode_base64( << User/binary, VHost/binary >> ),
+                                   UserBin = iolist_to_binary(User),
+                                   ID = jlib:encode_base64( << UserBin/binary, VHost/binary >> ),
                                    lists:member({<<"selected">>, ID}, Query)
                               end, Stats),
              Proc = gen_mod:get_module_proc(VHost, ?PROCNAME),
              Rez = lists:foldl(fun({User, _Count}, Acc) ->
                                    lists:append(Acc, [gen_server:call(Proc,
                                                                       {delete_all_messages_by_user_at,
-                                                                       User, iolist_to_binary(Date)},
+                                                                       iolist_to_binary(User), iolist_to_binary(Date)},
                                                                       ?CALL_TIMEOUT)])
                                end, [], PStats),
              case lists:member(error, Rez) of

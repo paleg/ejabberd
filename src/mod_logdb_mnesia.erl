@@ -160,7 +160,7 @@ handle_call({get_vhost_stats_at, Date}, _From, #state{vhost=VHost}=State) ->
     Reply =
       case mnesia:transaction(Fun) of
            {atomic, Result} ->
-                     {ok, lists:reverse(lists:keysort(2, [{iolist_to_binary(User), Count} || [User, Count] <- Result]))};
+                     {ok, lists:reverse(lists:keysort(2, [{User, Count} || [User, Count] <- Result]))};
            {aborted, Reason} ->
                      {error, Reason}
       end,
