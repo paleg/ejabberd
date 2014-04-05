@@ -1,3 +1,6 @@
+% {ok, DBRef} = pgsql:connect([{host, "127.0.0.1"}, {database, "logdb"}, {user, "logdb"}, {password, "logdb"}, {port, 5432}, {as_binary, true}]).
+% Schema = "test".
+% pgsql:squery(DBRef, "CREATE TABLE test.\"logdb_stats_test\" (owner_id INTEGER, peer_name_id INTEGER, peer_server_id INTEGER, at VARCHAR(20), count integer);" ).
 %%%----------------------------------------------------------------------
 %%% File    : mod_logdb_pgsql.erl
 %%% Author  : Oleg Palij (mailto,xmpp:o.palij@gmail.com)
@@ -48,7 +51,7 @@
 % replace "." with "_"
 escape_vhost(VHost) -> lists:map(fun(46) -> 95;
                                     (A) -> A
-                                 end, VHost).
+                                 end, binary_to_list(VHost)).
 
 prefix(Schema) ->
    Schema ++ ".\"" ++ "logdb_".
@@ -102,14 +105,14 @@ stop(VHost) ->
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 init([VHost, Opts]) ->
-   Server = gen_mod:get_opt(server, Opts, "localhost"),
-   DB = gen_mod:get_opt(db, Opts, "ejabberd_logdb"),
-   User = gen_mod:get_opt(user, Opts, "root"),
-   Port = gen_mod:get_opt(port, Opts, 5432),
-   Password = gen_mod:get_opt(password, Opts, ""),
-   Schema = gen_mod:get_opt(schema, Opts, "public"),
+   Server = gen_mod:get_opt(server, Opts, fun(A) -> A end, <<"localhost">>),
+   DB = gen_mod:get_opt(db, Opts, fun(A) -> A end, <<"ejabberd_logdb">>),
+   User = gen_mod:get_opt(user, Opts, fun(A) -> A end, <<"root">>),
+   Port = gen_mod:get_opt(port, Opts, fun(A) -> A end, 5432),
+   Password = gen_mod:get_opt(password, Opts, fun(A) -> A end, <<"">>),
+   Schema = binary_to_list(gen_mod:get_opt(schema, Opts, fun(A) -> A end, <<"public">>)),
 
-   ?MYDEBUG("Starting pgsql backend for ~p", [VHost]),
+   ?MYDEBUG("Starting pgsql backend for ~s", [VHost]),
 
    St = #state{vhost=VHost,
                server=Server, port=Port, db=DB,
@@ -157,21 +160,21 @@ handle_call({log_message, Msg}, _From, #state{dbref=DBRef, vhost=VHost, schema=S
                  "('", TableName, "',",
                   "'", ViewName, "',",
                   "'", Date, "',",
-                  "'", Msg#msg.owner_name, "',",
-                  "'", Msg#msg.peer_name, "',",
-                  "'", Msg#msg.peer_server, "',",
-                  "'", ejabberd_odbc:escape(Msg#msg.peer_resource), "',",
+                  "'", binary_to_list(Msg#msg.owner_name), "',",
+                  "'", binary_to_list(Msg#msg.peer_name), "',",
+                  "'", binary_to_list(Msg#msg.peer_server), "',",
+                  "'", binary_to_list( ejabberd_odbc:escape(Msg#msg.peer_resource) ), "',",
                   "'", atom_to_list(Msg#msg.direction), "',",
-                  "'", Msg#msg.type, "',",
-                  "'", ejabberd_odbc:escape(Msg#msg.subject), "',",
-                  "'", ejabberd_odbc:escape(Msg#msg.body), "',",
+                  "'", binary_to_list(Msg#msg.type), "',",
+                  "'", binary_to_list( ejabberd_odbc:escape(Msg#msg.subject) ), "',",
+                  "'", binary_to_list( ejabberd_odbc:escape(Msg#msg.body) ), "',",
                   "'", Msg#msg.timestamp, "');"],
 
     case sql_query_internal_silent(DBRef, Query) of
     % TODO: change this
          {data, [{"0"}]} ->
-             ?MYDEBUG("Logged ok for ~p, peer: ~p", [Msg#msg.owner_name++"@"++VHost,
-                                                     Msg#msg.peer_name++"@"++Msg#msg.peer_server]),
+             ?MYDEBUG("Logged ok for ~s, peer: ~s", [ [Msg#msg.owner_name, <<"@">>, VHost],
+                                                      [Msg#msg.peer_name, <<"@">>, Msg#msg.peer_server] ]),
              ok;
          {error, _Reason} ->
              error
@@ -335,7 +338,7 @@ handle_call({get_user_settings, User}, _From, #state{dbref=DBRef, vhost=VHost, s
                                   dolog_list=string_to_list(DoLogL),
                                   donotlog_list=string_to_list(DoNotLogL)}};
            {error, Reason} ->
-              ?ERROR_MSG("Failed to get_user_settings for ~p@~p: ~p", [User, VHost, Reason]),
+              ?ERROR_MSG("Failed to get_user_settings for ~s@~s: ~p", [User, VHost, Reason]),
               error
       end,
     {reply, Reply, State};
@@ -574,7 +577,7 @@ rebuild_stats_at_int(DBRef, VHost, Schema, Date) ->
 
     case sql_transaction_internal(DBRef, Fun) of
          {atomic, _} ->
-            ?INFO_MSG("Rebuilded stats for ~p at ~p", [VHost, Date]),
+            ?INFO_MSG("Rebuilded stats for ~s at ~s", [VHost, Date]),
             ok;
          {aborted, Reason} ->
             ?ERROR_MSG("Failed to rebuild stats for ~s table: ~p.", [Date, Reason]),
@@ -711,20 +714,20 @@ create_stats_table(#state{dbref=DBRef, vhost=VHost, schema=Schema}=State) ->
                      {value, {code, "42P07"}} ->
                          exists;
                      _ ->
-                         ?ERROR_MSG("Failed to create stats table for ~p: ~p", [VHost, Reason]),
+                         ?ERROR_MSG("Failed to create stats table for ~s: ~p", [VHost, Reason]),
                          error
                 end
         end
       end,
     case sql_transaction_internal(DBRef, Fun) of
          {atomic, created} ->
-            ?MYDEBUG("Created stats table for ~p", [VHost]),
+            ?MYDEBUG("Created stats table for ~s", [VHost]),
             rebuild_all_stats_int(State),
             ok;
          {atomic, exists} ->
-            ?MYDEBUG("Stats table for ~p already exists", [VHost]),
+            ?MYDEBUG("Stats table for ~s already exists", [VHost]),
             {match, [{F, L}]} = re:run(SName, "\".*\""),
-            QTable = lists:sublist(SName, F+1, L-2),
+            QTable = lists:sublist(SName, F+2, L-2),
             OIDQuery = ["SELECT c.oid FROM pg_catalog.pg_class c LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace WHERE c.relname='",QTable,"' AND pg_catalog.pg_table_is_visible(c.oid);"],
             {data,[{OID}]} = sql_query_internal(DBRef, OIDQuery),
             CheckQuery = ["SELECT a.attname FROM pg_catalog.pg_attribute a  WHERE a.attrelid = '",OID,"' AND a.attnum > 0 AND NOT a.attisdropped AND a.attname ~ '^peer_.*_id$';"],
@@ -756,15 +759,15 @@ create_settings_table(#state{dbref=DBRef, vhost=VHost, schema=Schema}) ->
             ],
     case sql_query_internal_silent(DBRef, Query) of
          {updated, _} ->
-            ?MYDEBUG("Created settings table for ~p", [VHost]),
+            ?MYDEBUG("Created settings table for ~s", [VHost]),
             ok;
          {error, Reason} ->
             case lists:keysearch(code, 1, Reason) of
                  {value, {code, "42P07"}} ->
-                   ?MYDEBUG("Settings table for ~p already exists", [VHost]),
+                   ?MYDEBUG("Settings table for ~s already exists", [VHost]),
                    ok;
                  _ ->
-                   ?ERROR_MSG("Failed to create settings table for ~p: ~p", [VHost, Reason]),
+                   ?ERROR_MSG("Failed to create settings table for ~s: ~p", [VHost, Reason]),
                    error
             end
     end.
@@ -788,17 +791,17 @@ create_users_table(#state{dbref=DBRef, vhost=VHost, schema=Schema}) ->
                      {value, {code, "42P07"}} ->
                        exists;
                      _ ->
-                       ?ERROR_MSG("Failed to create users table for ~p: ~p", [VHost, Reason]),
+                       ?ERROR_MSG("Failed to create users table for ~s: ~p", [VHost, Reason]),
                        error
                 end
         end
       end,
     case sql_transaction_internal(DBRef, Fun) of
          {atomic, created} ->
-             ?MYDEBUG("Created users table for ~p", [VHost]),
+             ?MYDEBUG("Created users table for ~s", [VHost]),
              ok;
          {atomic, exists} ->
-             ?MYDEBUG("Users table for ~p already exists", [VHost]),
+             ?MYDEBUG("Users table for ~s already exists", [VHost]),
              ok;
          {aborted, _} -> error
     end.
@@ -821,17 +824,17 @@ create_servers_table(#state{dbref=DBRef, vhost=VHost, schema=Schema}) ->
                      {value, {code, "42P07"}} ->
                        exists;
                      _ ->
-                       ?ERROR_MSG("Failed to create servers table for ~p: ~p", [VHost, Reason]),
+                       ?ERROR_MSG("Failed to create servers table for ~s: ~p", [VHost, Reason]),
                        error
                 end
         end
       end,
     case sql_transaction_internal(DBRef, Fun) of
          {atomic, created} ->
-            ?MYDEBUG("Created servers table for ~p", [VHost]),
+            ?MYDEBUG("Created servers table for ~s", [VHost]),
             ok;
          {atomic, exists} ->
-            ?MYDEBUG("Servers table for ~p already exists", [VHost]),
+            ?MYDEBUG("Servers table for ~s already exists", [VHost]),
             ok;
          {aborted, _} -> error
     end.
@@ -853,17 +856,17 @@ create_resources_table(#state{dbref=DBRef, vhost=VHost, schema=Schema}) ->
                          {value, {code, "42P07"}} ->
                            exists;
                          _ ->
-                           ?ERROR_MSG("Failed to create users table for ~p: ~p", [VHost, Reason]),
+                           ?ERROR_MSG("Failed to create users table for ~s: ~p", [VHost, Reason]),
                            error
                     end
             end
           end,
     case sql_transaction_internal(DBRef, Fun) of
          {atomic, created} ->
-             ?MYDEBUG("Created resources table for ~p", [VHost]),
+             ?MYDEBUG("Created resources table for ~s", [VHost]),
              ok;
          {atomic, exists} ->
-             ?MYDEBUG("Resources table for ~p already exists", [VHost]),
+             ?MYDEBUG("Resources table for ~s already exists", [VHost]),
              ok;
          {aborted, _} -> error
     end.
@@ -1060,7 +1063,7 @@ get_result({ok, ["CREATE INDEX"]}) ->
     {updated, 1};
 get_result({ok, ["CREATE FUNCTION"]}) ->
     {updated, 1};
-get_result({ok, [{"SELECT", _Rows, Recs}]}) ->
+get_result({ok, [{[$S, $E, $L, $E, $C, $T, $  | _Rest], _Rows, Recs}]}) ->
     Fun = fun(Rec) ->
               list_to_tuple(
                   lists:map(fun(Elem) when is_binary(Elem) ->
