@@ -112,13 +112,20 @@ init([VHost, Opts]) ->
     % 10 is default becouse of using in clustered environment
     PollUsersSettings = gen_mod:get_opt(poll_users_settings, Opts, fun(A) -> A end, 10),
 
-    DBName = case lists:keysearch(VHost, 1, VHostDB) of
-                  false ->
-                      ?WARNING_MSG("There is no logging backend defined for ~s, switching to mnesia", [VHost]),
-                      mnesia;
-                  {value,{_, DBNameResult}} -> DBNameResult
-             end,
-    {value, {DBName, DBOpts}} = lists:keysearch(DBName, 1, DBs),
+    {DBName, DBOpts} =
+         case lists:keysearch(VHost, 1, VHostDB) of
+              false ->
+                 ?WARNING_MSG("There is no logging backend defined for '~s', switching to mnesia", [VHost]),
+                 {mnesia, []};
+              {value,{_, DBNameResult}} ->
+                 case lists:keysearch(DBNameResult, 1, DBs) of
+                      false ->
+                        ?WARNING_MSG("There is no such logging backend '~s' defined for '~s', switching to mnesia", [DBNameResult, VHost]),
+                        {mnesia, []};
+                      {value, {_, DBOptsResult}} ->
+                        {DBNameResult, DBOptsResult}
+                 end
+         end,
 
     ?MYDEBUG("Starting mod_logdb for ~s with ~s backend", [VHost, DBName]),
 
