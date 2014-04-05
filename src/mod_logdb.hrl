@@ -29,7 +29,7 @@
                         donotlog_list=[]}).
 
 -define(INPUTC(Type, Name, Value),
-        ?XA("input", [{"type", Type},
-                      {"name", Name},
-                      {"value", Value},
-                      {"checked", "true"}])).
+        ?XA(<<"input">>, [{<<"type">>,    Type},
+                          {<<"name">>,    Name},
+                          {<<"value">>,   Value},
+                          {<<"checked">>, <<"true">>}])).
