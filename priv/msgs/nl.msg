@@ -423,9 +423,11 @@
 {"Users Messages", "Gebruikersberichten"}.
 {"Date", "Datum"}.
 {"Count", "Aantal"}.
-{"Logged messages for ", "Gelogde berichten van "}.
+{"Logged messages for ~s", "Gelogde berichten van ~s"}.
+{"Logged messages for ~s at ~s", "Gelogde berichten van ~s op ~s"}.
 {" at ", " op "}.
-{"No logged messages for ", "Geen gelogde berichten van "}.
+{"No logged messages for ~s", "Geen gelogde berichten van ~s"}.
+{"No logged messages for ~s at ~s", "Geen gelogde berichten van ~s op ~s"}.
 {"Date, Time", "Datum en tijd"}.
 {"Direction: Jid", "Richting: Jabber ID"}.
 {"Subject", "Onderwerp"}.

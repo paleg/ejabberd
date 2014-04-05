@@ -423,9 +423,11 @@
 {"Users Messages", "Wiadomości użytkownika"}.
 {"Date", "Data"}.
 {"Count", "Liczba"}.
-{"Logged messages for ", "Zapisane wiadomości dla "}.
+{"Logged messages for ~s", "Zapisane wiadomości dla ~s"}.
+{"Logged messages for ~s at", "Zapisane wiadomości dla ~s o ~s"}.
 {" at ", " o "}.
-{"No logged messages for ", "Brak zapisanych wiadomości dla "}.
+{"No logged messages for ~s", "Brak zapisanych wiadomości dla ~s"}.
+{"No logged messages for ~s at ~s", "Brak zapisanych wiadomości dla ~s o ~s"}.
 {"Date, Time", "Data, Godzina"}.
 {"Direction: Jid", "Kierunek: Jid"}.
 {"Subject", "Temat"}.

@@ -411,9 +411,11 @@
 {"Users Messages", "Повідомлення користувачів"}.
 {"Date", "Дата"}.
 {"Count", "Кількість"}.
-{"Logged messages for ", "Збережені повідомлення для "}.
+{"Logged messages for ~s", "Збережені повідомлення для ~s"}.
+{"Logged messages for ~s at ~s", "Збережені повідомлення для ~s за ~s"}.
 {" at ", " за "}.
-{"No logged messages for ", "Відсутні повідомлення для "}.
+{"No logged messages for ~s", "Відсутні повідомлення для ~s"}.
+{"No logged messages for ~s at ~s", "Відсутні повідомлення для ~s за ~s"}.
 {"Date, Time", "Дата, Час"}.
 {"Direction: Jid", "Напрямок: Jid"}.
 {"Subject", "Тема"}.

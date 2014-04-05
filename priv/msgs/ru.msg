@@ -423,9 +423,11 @@
 {"Users Messages", "Сообщения пользователей"}.
 {"Date", "Дата"}.
 {"Count", "Количество"}.
-{"Logged messages for ", "Сохранённые cообщения для "}.
+{"Logged messages for ~s", "Сохранённые cообщения для ~s"}.
+{"Logged messages for ~s at ~s", "Сохранённые cообщения для ~s за ~s"}.
 {" at ", " за "}.
-{"No logged messages for ", "Отсутствуют сообщения для "}.
+{"No logged messages for ~s", "Отсутствуют сообщения для ~s"}.
+{"No logged messages for ~s at ~s", "Отсутствуют сообщения для ~s за ~s"}.
 {"Date, Time", "Дата, Время"}.
 {"Direction: Jid", "Направление: Jid"}.
 {"Subject", "Тема"}.
