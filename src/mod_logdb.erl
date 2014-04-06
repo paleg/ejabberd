@@ -153,14 +153,14 @@ cleanup(#state{vhost=VHost} = _State) ->
     ejabberd_hooks:delete(user_receive_packet, VHost, ?MODULE, receive_packet, 90),
     %ejabberd_hooks:delete(adhoc_sm_commands, VHost, ?MODULE, adhoc_sm_commands, 110),
     %ejabberd_hooks:delete(adhoc_sm_items, VHost, ?MODULE, adhoc_sm_items, 110),
-    ejabberd_hooks:delete(adhoc_local_commands, VHost, ?MODULE, adhoc_local_commands, 110),
-    ejabberd_hooks:delete(adhoc_local_items, VHost, ?MODULE, adhoc_local_items, 110),
-    %ejabberd_hooks:delete(disco_sm_identity, VHost, ?MODULE, get_sm_identity, 110),
-    %ejabberd_hooks:delete(disco_sm_features, VHost, ?MODULE, get_sm_features, 110),
-    %ejabberd_hooks:delete(disco_sm_items, VHost, ?MODULE, get_sm_items, 110),
-    ejabberd_hooks:delete(disco_local_identity, VHost, ?MODULE, get_local_identity, 110),
-    ejabberd_hooks:delete(disco_local_features, VHost, ?MODULE, get_local_features, 110),
-    ejabberd_hooks:delete(disco_local_items, VHost, ?MODULE, get_local_items, 110),
+    ejabberd_hooks:delete(adhoc_local_commands, VHost, ?MODULE, adhoc_local_commands, 50),
+    ejabberd_hooks:delete(adhoc_local_items, VHost, ?MODULE, adhoc_local_items, 50),
+    %ejabberd_hooks:delete(disco_sm_identity, VHost, ?MODULE, get_sm_identity, 50),
+    %ejabberd_hooks:delete(disco_sm_features, VHost, ?MODULE, get_sm_features, 50),
+    %ejabberd_hooks:delete(disco_sm_items, VHost, ?MODULE, get_sm_items, 50),
+    ejabberd_hooks:delete(disco_local_identity, VHost, ?MODULE, get_local_identity, 50),
+    ejabberd_hooks:delete(disco_local_features, VHost, ?MODULE, get_local_features, 50),
+    ejabberd_hooks:delete(disco_local_items, VHost, ?MODULE, get_local_items, 50),
 
     ejabberd_hooks:delete(webadmin_menu_host, VHost, ?MODULE, webadmin_menu, 70),
     ejabberd_hooks:delete(webadmin_user, VHost, ?MODULE, webadmin_user, 50),
@@ -387,16 +387,16 @@ handle_info(start, #state{dbmod=DBMod, vhost=VHost}=State) ->
            ejabberd_hooks:add(user_send_packet, VHost, ?MODULE, send_packet, 90),
            ejabberd_hooks:add(user_receive_packet, VHost, ?MODULE, receive_packet, 90),
 
-           ejabberd_hooks:add(disco_local_items, VHost, ?MODULE, get_local_items, 110),
-           ejabberd_hooks:add(disco_local_features, VHost, ?MODULE, get_local_features, 110),
-           ejabberd_hooks:add(disco_local_identity, VHost, ?MODULE, get_local_identity, 110),
-           %ejabberd_hooks:add(disco_sm_items, VHost, ?MODULE, get_sm_items, 110),
-           %ejabberd_hooks:add(disco_sm_features, VHost, ?MODULE, get_sm_features, 110),
-           %ejabberd_hooks:add(disco_sm_identity, VHost, ?MODULE, get_sm_identity, 110),
-           ejabberd_hooks:add(adhoc_local_items, VHost, ?MODULE, adhoc_local_items, 110),
-           ejabberd_hooks:add(adhoc_local_commands, VHost, ?MODULE, adhoc_local_commands, 110),
-           %ejabberd_hooks:add(adhoc_sm_items, VHost, ?MODULE, adhoc_sm_items, 110),
-           %ejabberd_hooks:add(adhoc_sm_commands, VHost, ?MODULE, adhoc_sm_commands, 110),
+           ejabberd_hooks:add(disco_local_items, VHost, ?MODULE, get_local_items, 50),
+           ejabberd_hooks:add(disco_local_features, VHost, ?MODULE, get_local_features, 50),
+           ejabberd_hooks:add(disco_local_identity, VHost, ?MODULE, get_local_identity, 50),
+           %ejabberd_hooks:add(disco_sm_items, VHost, ?MODULE, get_sm_items, 50),
+           %ejabberd_hooks:add(disco_sm_features, VHost, ?MODULE, get_sm_features, 50),
+           %ejabberd_hooks:add(disco_sm_identity, VHost, ?MODULE, get_sm_identity, 50),
+           ejabberd_hooks:add(adhoc_local_items, VHost, ?MODULE, adhoc_local_items, 50),
+           ejabberd_hooks:add(adhoc_local_commands, VHost, ?MODULE, adhoc_local_commands, 50),
+           %ejabberd_hooks:add(adhoc_sm_items, VHost, ?MODULE, adhoc_sm_items, 50),
+           %ejabberd_hooks:add(adhoc_sm_commands, VHost, ?MODULE, adhoc_sm_commands, 50),
 
            ejabberd_hooks:add(webadmin_menu_host, VHost, ?MODULE, webadmin_menu, 70),
            ejabberd_hooks:add(webadmin_user, VHost, ?MODULE, webadmin_user, 50),
@@ -749,8 +749,7 @@ user_messages_parse_query(User, VHost, Query) ->
              Dates = get_dates(VHost),
              PDates = lists:filter(
                               fun(Date) ->
-                                   DateBin = iolist_to_binary(Date),
-                                   ID = jlib:encode_base64( << User/binary, DateBin/binary >> ),
+                                   ID = jlib:encode_base64( << User/binary, (iolist_to_binary(Date))/binary >> ),
                                    lists:member({<<"selected">>, ID}, Query)
                               end, Dates),
              Proc = gen_mod:get_module_proc(VHost, ?PROCNAME),
@@ -777,8 +776,7 @@ vhost_messages_parse_query(VHost, Query) ->
              Dates = get_dates(VHost),
              PDates = lists:filter(
                               fun(Date) ->
-                                   DateBin = iolist_to_binary(Date),
-                                   ID = jlib:encode_base64( << VHost/binary, DateBin/binary >> ),
+                                   ID = jlib:encode_base64( << VHost/binary, (iolist_to_binary(Date))/binary >> ),
                                    lists:member({<<"selected">>, ID}, Query)
                               end, Dates),
              Proc = gen_mod:get_module_proc(VHost, ?PROCNAME),
@@ -802,8 +800,7 @@ vhost_messages_at_parse_query(VHost, Date, Stats, Query) ->
          {value, _} ->
              PStats = lists:filter(
                               fun({User, _Count}) ->
-                                   UserBin = iolist_to_binary(User),
-                                   ID = jlib:encode_base64( << UserBin/binary, VHost/binary >> ),
+                                   ID = jlib:encode_base64( << (iolist_to_binary(User))/binary, VHost/binary >> ),
                                    lists:member({<<"selected">>, ID}, Query)
                               end, Stats),
              Proc = gen_mod:get_module_proc(VHost, ?PROCNAME),
@@ -1024,7 +1021,9 @@ copy_messages_int_tc([FromDBMod, ToDBMod, VHost, Date]) ->
 
     ok.
 
-list_to_bool(Num) ->
+list_to_bool(Num) when is_binary(Num) ->
+    list_to_bool(binary_to_list(Num));
+list_to_bool(Num) when is_list(Num) ->
     case lists:member(Num, ["t", "true", "y", "yes", "1"]) of
          true ->
            true;
@@ -1045,7 +1044,11 @@ bool_to_list(false) ->
 list_to_string([]) ->
     "";
 list_to_string(List) when is_list(List) ->
-    Str = lists:flatmap(fun(Elm) -> Elm ++ "\n" end, List),
+    Str = lists:flatmap(fun(Elm) when is_binary(Elm) ->
+                              binary_to_list(Elm) ++ "\n";
+                           (Elm) when is_list(Elm) ->
+                              Elm ++ "\n"
+                        end, List),
     lists:sublist(Str, length(Str)-1).
 
 string_to_list(null) ->
@@ -1074,7 +1077,7 @@ string_to_list(String) ->
             end
     end).
 
-get_local_items(Acc, From, #jid{lserver = LServer} = To, "", Lang) ->
+get_local_items(Acc, From, #jid{lserver = LServer} = To, <<"">>, Lang) ->
     case gen_mod:is_loaded(LServer, mod_adhoc) of
         false ->
             Acc;
@@ -1103,54 +1106,58 @@ get_local_items(Acc, From, #jid{lserver = LServer} = To, Node, Lang) ->
         false ->
             Acc;
         _ ->
-            LNode = string:tokens(Node, "/"),
+            LNode = str:tokens(Node, <<"/">>),
             AllowAdmin = acl:match_rule(LServer, mod_logdb_admin, From),
             case LNode of
-                 ["mod_logdb"] ->
+                 [<<"mod_logdb">>] ->
                       ?ITEMS_RESULT(AllowAdmin, LNode, {error, ?ERR_FORBIDDEN});
-                 ["mod_logdb_users"] ->
+                 [<<"mod_logdb_users">>] ->
                       ?ITEMS_RESULT(AllowAdmin, LNode, {error, ?ERR_FORBIDDEN});
-                 ["mod_logdb_users", [$@ | _]] ->
+                 [<<"mod_logdb_users">>, <<$@, _/binary>>] ->
                       ?ITEMS_RESULT(AllowAdmin, LNode, {error, ?ERR_FORBIDDEN});
-                 ["mod_logdb_users", _User] ->
+                 [<<"mod_logdb_users">>, _User] ->
                       ?ITEMS_RESULT(AllowAdmin, LNode, {error, ?ERR_FORBIDDEN});
-                 ["mod_logdb_settings"] ->
+                 [<<"mod_logdb_settings">>] ->
                       ?ITEMS_RESULT(AllowAdmin, LNode, {error, ?ERR_FORBIDDEN});
                  _ ->
                       Acc
             end
     end.
 
+-define(T(Lang, Text), translate:translate(Lang, Text)).
+
 -define(NODE(Name, Node),
-        {xmlelement, "item",
-         [{"jid", Server},
-          {"name", translate:translate(Lang, Name)},
-          {"node", Node}], []}).
+    #xmlel{name = <<"item">>,
+           attrs =
+           [{<<"jid">>, Server}, {<<"name">>, ?T(Lang, Name)},
+            {<<"node">>, Node}],
+           children = []}).
 
 get_local_items(_Host, [], Server, Lang) ->
     {result,
-     [?NODE("Messages logging engine", "mod_logdb")]
+     [?NODE(<<"Messages logging engine">>, <<"mod_logdb">>)]
     };
-get_local_items(_Host, ["mod_logdb"], Server, Lang) ->
+get_local_items(_Host, [<<"mod_logdb">>], Server, Lang) ->
     {result,
-     [?NODE("Messages logging engine users", "mod_logdb_users"),
-      ?NODE("Messages logging engine settings", "mod_logdb_settings")]
+     [?NODE(<<"Messages logging engine users">>, <<"mod_logdb_users">>),
+      ?NODE(<<"Messages logging engine settings">>, <<"mod_logdb_settings">>)]
     };
-get_local_items(Host, ["mod_logdb_users"], Server, Lang) ->
+get_local_items(Host, [<<"mod_logdb_users">>], Server, Lang) ->
     {result, get_all_vh_users(Host, Server, Lang)};
-get_local_items(_Host, ["mod_logdb_users", [$@ | Diap]], Server, Lang) ->
-    case catch ejabberd_auth:dirty_get_registered_users() of
+get_local_items(Host, [<<"mod_logdb_users">>, <<$@, Diap/binary>>], Server, Lang) ->
+    case catch ejabberd_auth:get_vh_registered_users(Host) of
         {'EXIT', _Reason} ->
             ?ERR_INTERNAL_SERVER_ERROR;
         Users ->
             SUsers = lists:sort([{S, U} || {U, S} <- Users]),
             case catch begin
                            [S1, S2] = ejabberd_regexp:split(Diap, <<"-">>),
-                           N1 = binary_to_integer(S1),
-                           N2 = binary_to_integer(S2),
+                           N1 = jlib:binary_to_integer(S1),
+                           N2 = jlib:binary_to_integer(S2),
                            Sub = lists:sublist(SUsers, N1, N2 - N1 + 1),
                            lists:map(fun({S, U}) ->
-                                      ?NODE(U ++ "@" ++ S, "mod_logdb_users/" ++ U ++ "@" ++ S)
+                                      ?NODE(<< U/binary, "@", S/binary >>,
+                                            << (iolist_to_binary("mod_logdb_users/"))/binary, U/binary, "@", S/binary >>)
                                      end, Sub)
                        end of
                 {'EXIT', _Reason} ->
@@ -1159,9 +1166,9 @@ get_local_items(_Host, ["mod_logdb_users", [$@ | Diap]], Server, Lang) ->
                     {result, Res}
             end
     end;
-get_local_items(_Host, ["mod_logdb_users", _User], _Server, _Lang) ->
+get_local_items(_Host, [<<"mod_logdb_users">>, _User], _Server, _Lang) ->
     {result, []};
-get_local_items(_Host, ["mod_logdb_settings"], _Server, _Lang) ->
+get_local_items(_Host, [<<"mod_logdb_settings">>], _Server, _Lang) ->
     {result, []};
 get_local_items(_Host, Item, _Server, _Lang) ->
     ?MYDEBUG("asked for items in ~p", [Item]),
@@ -1169,10 +1176,8 @@ get_local_items(_Host, Item, _Server, _Lang) ->
 
 -define(INFO_RESULT(Allow, Feats),
     case Allow of
-        deny ->
-            {error, ?ERR_FORBIDDEN};
-        allow ->
-            {result, Feats}
+      deny -> {error, ?ERR_FORBIDDEN};
+      allow -> {result, Feats}
     end).
 
 get_local_features(Acc, From, #jid{lserver = LServer} = _To, Node, _Lang) ->
@@ -1180,52 +1185,53 @@ get_local_features(Acc, From, #jid{lserver = LServer} = _To, Node, _Lang) ->
         false ->
             Acc;
         _ ->
-            LNode = string:tokens(Node, "/"),
+            LNode = str:tokens(Node, <<"/">>),
             AllowUser = acl:match_rule(LServer, mod_logdb, From),
             AllowAdmin = acl:match_rule(LServer, mod_logdb_admin, From),
             case LNode of
-                 ["mod_logdb"] when AllowUser == allow; AllowAdmin == allow ->
+                 [<<"mod_logdb">>] when AllowUser == allow; AllowAdmin == allow ->
                     ?INFO_RESULT(allow, [?NS_COMMANDS]);
-                 ["mod_logdb"] ->
+                 [<<"mod_logdb">>] ->
                     ?INFO_RESULT(deny, [?NS_COMMANDS]);
-                 ["mod_logdb_users"] ->
+                 [<<"mod_logdb_users">>] ->
                     ?INFO_RESULT(AllowAdmin, []);
-                 ["mod_logdb_users", [$@ | _]] ->
+                 [<<"mod_logdb_users">>, [$@ | _]] ->
                     ?INFO_RESULT(AllowAdmin, []);
-                 ["mod_logdb_users", _User] ->
+                 [<<"mod_logdb_users">>, _User] ->
                     ?INFO_RESULT(AllowAdmin, [?NS_COMMANDS]);
-                 ["mod_logdb_settings"] ->
+                 [<<"mod_logdb_settings">>] ->
                     ?INFO_RESULT(AllowAdmin, [?NS_COMMANDS]);
                  [] ->
                     Acc;
                  _ ->
-                    %?MYDEBUG("asked for ~p features: ~p", [LNode, Allow]),
                     Acc
             end
     end.
 
 -define(INFO_IDENTITY(Category, Type, Name, Lang),
-        [{xmlelement, "identity",
-          [{"category", Category},
-           {"type", Type},
-           {"name", translate:translate(Lang, Name)}], []}]).
+    [#xmlel{name = <<"identity">>,
+        attrs =
+            [{<<"category">>, Category}, {<<"type">>, Type},
+             {<<"name">>, ?T(Lang, Name)}],
+        children = []}]).
 
 -define(INFO_COMMAND(Name, Lang),
-        ?INFO_IDENTITY("automation", "command-node", Name, Lang)).
+    ?INFO_IDENTITY(<<"automation">>, <<"command-node">>,
+               Name, Lang)).
 
 get_local_identity(Acc, _From, _To, Node, Lang) ->
-    LNode = string:tokens(Node, "/"),
+    LNode = str:tokens(Node, <<"/">>),
     case LNode of
-         ["mod_logdb"] ->
-            ?INFO_COMMAND("Messages logging engine", Lang);
-         ["mod_logdb_users"] ->
-            ?INFO_COMMAND("Messages logging engine users", Lang);
-         ["mod_logdb_users", [$@ | _]] ->
+         [<<"mod_logdb">>] ->
+            ?INFO_COMMAND(<<"Messages logging engine">>, Lang);
+         [<<"mod_logdb_users">>] ->
+            ?INFO_COMMAND(<<"Messages logging engine users">>, Lang);
+         [<<"mod_logdb_users">>, [$@ | _]] ->
             Acc;
-         ["mod_logdb_users", User] ->
+         [<<"mod_logdb_users">>, User] ->
             ?INFO_COMMAND(User, Lang);
-         ["mod_logdb_settings"] ->
-            ?INFO_COMMAND("Messages logging engine settings", Lang);
+         [<<"mod_logdb_settings">>] ->
+            ?INFO_COMMAND(<<"Messages logging engine settings">>, Lang);
          [] ->
             Acc;
          _ ->
@@ -1264,10 +1270,10 @@ adhoc_local_items(Acc, From, #jid{lserver = LServer, server = Server} = To,
                end, Nodes),
     {result, Items ++ Nodes1}.
 
-recursively_get_local_items(_LServer, "mod_logdb_users", _Server, _Lang) ->
+recursively_get_local_items(_LServer, <<"mod_logdb_users">>, _Server, _Lang) ->
     [];
 recursively_get_local_items(LServer, Node, Server, Lang) ->
-    LNode = string:tokens(Node, "/"),
+    LNode = str:tokens(Node, <<"/">>),
     Items = case get_local_items(LServer, LNode, Server, Lang) of
                 {result, Res} ->
                     Res;
@@ -1298,15 +1304,15 @@ recursively_get_local_items(LServer, Node, Server, Lang) ->
 
 adhoc_local_commands(Acc, From, #jid{lserver = LServer} = To,
                      #adhoc_request{node = Node} = Request) ->
-    LNode = string:tokens(Node, "/"),
+    LNode = str:tokens(Node, <<"/">>),
     AllowUser = acl:match_rule(LServer, mod_logdb, From),
     AllowAdmin = acl:match_rule(LServer, mod_logdb_admin, From),
     case LNode of
-         ["mod_logdb"] when AllowUser == allow; AllowAdmin == allow ->
+         [<<"mod_logdb">>] when AllowUser == allow; AllowAdmin == allow ->
              ?COMMANDS_RESULT(allow, From, To, Request);
-         ["mod_logdb_users", _User] when AllowAdmin == allow ->
+         [<<"mod_logdb_users">>, _User] when AllowAdmin == allow ->
              ?COMMANDS_RESULT(allow, From, To, Request);
-         ["mod_logdb_settings"] when AllowAdmin == allow ->
+         [<<"mod_logdb_settings">>] when AllowAdmin == allow ->
              ?COMMANDS_RESULT(allow, From, To, Request);
          _ ->
              Acc
@@ -1318,19 +1324,19 @@ adhoc_local_commands(From, #jid{lserver = LServer} = _To,
                                     sessionid = SessionID,
                                     action = Action,
                                     xdata = XData} = Request) ->
-    LNode = string:tokens(Node, "/"),
+    LNode = str:tokens(Node, <<"/">>),
     %% If the "action" attribute is not present, it is
     %% understood as "execute".  If there was no <actions/>
     %% element in the first response (which there isn't in our
     %% case), "execute" and "complete" are equivalent.
     ActionIsExecute = lists:member(Action,
-                                   ["", "execute", "complete"]),
-    if  Action == "cancel" ->
+                                   [<<"">>, <<"execute">>, <<"complete">>]),
+    if Action == <<"cancel">> ->
             %% User cancels request
             adhoc:produce_response(
               Request,
               #adhoc_response{status = canceled});
-        XData == false, ActionIsExecute ->
+       XData == false, ActionIsExecute ->
             %% User requests form
             case get_form(LServer, LNode, From, Lang) of
                 {result, Form} ->
@@ -1341,74 +1347,84 @@ adhoc_local_commands(From, #jid{lserver = LServer} = _To,
                 {error, Error} ->
                     {error, Error}
             end;
-        XData /= false, ActionIsExecute ->
+       XData /= false, ActionIsExecute ->
             %% User returns form.
             case jlib:parse_xdata_submit(XData) of
                 invalid ->
                     {error, ?ERR_BAD_REQUEST};
                 Fields ->
-                    case set_form(From, LServer, LNode, Lang, Fields) of
+                    case catch set_form(From, LServer, LNode, Lang, Fields) of
                         {result, _Res} ->
                             adhoc:produce_response(
                               #adhoc_response{lang = Lang,
                                               node = Node,
                                               sessionid = SessionID,
                                               status = completed});
-                        {error, Error} ->
-                            {error, Error}
+                        {'EXIT', _} -> {error, ?ERR_BAD_REQUEST};
+                        {error, Error} -> {error, Error}
                     end
             end;
-        true ->
+       true ->
             {error, ?ERR_BAD_REQUEST}
     end.
 
 -define(LISTLINE(Label, Value),
-                 {xmlelement, "option", [{"label", Label}],
-                  [{xmlelement, "value", [], [{xmlcdata, Value}]}]}).
--define(DEFVAL(Value), {xmlelement, "value", [], [{xmlcdata, Value}]}).
+                 #xmlel{name = <<"option">>,
+                        attrs = [{<<"label">>, ?T(Lang, Label)}],
+                        children = [#xmlel{name = <<"value">>, attrs = [],
+                                           children = [{xmlcdata, Value}]
+                                   }]}).
+-define(DEFVAL(Value), #xmlel{name = <<"value">>, attrs = [],
+                              children = [{xmlcdata, Value}]}).
 
 get_user_form(LUser, LServer, Lang) ->
     %From = jlib:jid_to_string(jlib:jid_remove_resource(Jid)),
     #user_settings{dolog_default=DLD,
                    dolog_list=DLL,
                    donotlog_list=DNLL} = get_user_settings(LUser, LServer),
-    {result, [{xmlelement, "x", [{"xmlns", ?NS_XDATA}],
-               [{xmlelement, "title", [],
-                 [{xmlcdata,
-                   translate:translate(
-                     Lang, "Messages logging engine settings")}]},
-                {xmlelement, "instructions", [],
-                 [{xmlcdata,
-                   translate:translate(
-                     Lang, "Set logging preferences")++ ": " ++ LUser ++ "@" ++ LServer}]},
-                % default to log
-                {xmlelement, "field", [{"type", "list-single"},
-                                       {"label",
-                                        translate:translate(Lang, "Default")},
-                                       {"var", "dolog_default"}],
-                 [?DEFVAL(atom_to_list(DLD)),
-                  ?LISTLINE(translate:translate(Lang, "Log Messages"), "true"),
-                  ?LISTLINE(translate:translate(Lang, "Do Not Log Messages"), "false")
-                 ]},
-                % do log list
-                {xmlelement, "field", [{"type", "text-multi"},
-                                       {"label",
-                                        translate:translate(
-                                          Lang, "Log Messages")},
-                                       {"var", "dolog_list"}],
-                 [{xmlelement, "value", [], [{xmlcdata, list_to_string(DLL)}]}]},
-                % do not log list
-                {xmlelement, "field", [{"type", "text-multi"},
-                                       {"label",
-                                        translate:translate(
-                                          Lang, "Do Not Log Messages")},
-                                       {"var", "donotlog_list"}],
-                 [{xmlelement, "value", [], [{xmlcdata, list_to_string(DNLL)}]}]}
+    {result,
+     [#xmlel{name = <<"x">>, 
+             attrs = [{<<"xmlns">>, ?NS_XDATA}],
+             children = [
+                #xmlel{name = <<"title">>, attrs = [],
+                   children =
+                    [{xmlcdata,
+                      ?T(Lang, <<"Messages logging engine settings">>)}]},
+                #xmlel{name = <<"instructions">>, attrs = [],
+                   children =
+                    [{xmlcdata,
+                      << (?T(Lang, <<"Set logging preferences">>))/binary, (iolist_to_binary(": "))/binary,
+                          LUser/binary, "@", LServer/binary >> }]},
+                #xmlel{name = <<"field">>,
+                       attrs = [{<<"type">>, <<"list-single">>},
+                                {<<"label">>, ?T(Lang, <<"Default">>)},
+                                {<<"var">>, <<"dolog_default">>}],
+                       children = 
+                        [?DEFVAL(jlib:atom_to_binary(DLD)),
+                         ?LISTLINE(<<"Log Messages">>, <<"true">>),
+                         ?LISTLINE(<<"Do Not Log Messages">>, <<"false">>)
+                        ]},
+                #xmlel{name = <<"field">>,
+                       attrs = [{<<"type">>, <<"text-multi">>},
+                                {<<"label">>, ?T(Lang, <<"Log Messages">>)},
+                                {<<"var">>, <<"dolog_list">>}],
+                       children = [#xmlel{name = <<"value">>, attrs = [],
+                                          children = [{xmlcdata, iolist_to_binary(list_to_string(DLL))}]}
+                                  ]
+                      },
+                #xmlel{name = <<"field">>,
+                       attrs = [{<<"type">>, <<"text-multi">>},
+                                {<<"label">>, ?T(Lang, <<"Do Not Log Messages">>)},
+                                {<<"var">>, <<"donotlog_list">>}],
+                       children = [#xmlel{name = <<"value">>, attrs = [],
+                                          children = [{xmlcdata, iolist_to_binary(list_to_string(DNLL))}]}
+                                  ]
+                      }
              ]}]}.
 
 get_settings_form(Host, Lang) ->
-    #state{dbmod=DBMod,
-           dbs=DBs,
+    #state{dbmod=_DBMod,
+           dbs=_DBs,
            dolog_default=DLD,
            ignore_jids=IgnoreJids,
            groupchat=GroupChat,
@@ -1416,107 +1432,117 @@ get_settings_form(Host, Lang) ->
            drop_messages_on_user_removal=MRemoval,
            poll_users_settings=PollTime} = mod_logdb:get_module_settings(Host),
 
-    Backends = lists:map(fun({Backend, _Opts}) ->
-                             ?LISTLINE(atom_to_list(Backend), atom_to_list(Backend))
-                         end, DBs),
-    DB = lists:sublist(atom_to_list(DBMod), length(atom_to_list(?MODULE)) + 2, length(atom_to_list(DBMod))),
-    DBsL = lists:append([?DEFVAL(DB)], Backends),
+    %Backends = lists:map(fun({Backend, _Opts}) ->
+    %                         ?LISTLINE(jlib:atom_to_binary(Backend), jlib:atom_to_binary(Backend))
+    %                     end, DBs),
+    %DB = iolist_to_binary(lists:sublist(atom_to_list(DBMod), length(atom_to_list(?MODULE)) + 2, length(atom_to_list(DBMod)))),
+    %DBsL = lists:append([?DEFVAL(DB)], Backends),
 
     PurgeDays =
        case PurgeDaysT of
-            never -> "never";
-            Num when is_integer(Num) -> integer_to_list(Num);
-            _ -> "unknown"
+            never -> <<"never">>;
+            Num when is_integer(Num) -> integer_to_binary(Num);
+            _ -> <<"unknown">>
        end,
-    {result, [{xmlelement, "x", [{"xmlns", ?NS_XDATA}],
-               [{xmlelement, "title", [],
-                 [{xmlcdata,
-                   translate:translate(
-                     Lang, "Messages logging engine settings") ++ " (run-time)"}]},
-                {xmlelement, "instructions", [],
-                 [{xmlcdata,
-                   translate:translate(
-                     Lang, "Set run-time settings")}]},
-                % backends
-                {xmlelement, "field", [{"type", "list-single"},
-                                  {"label",
-                                      translate:translate(Lang, "Backend")},
-                                  {"var", "backend"}],
-                 DBsL},
-                % dbs
-                {xmlelement, "field", [{"type", "text-multi"},
-                                       {"label",
-                                        translate:translate(
-                                          Lang, "dbs")},
-                                       {"var", "dbs"}],
-                 [{xmlelement, "value", [], [{xmlcdata, lists:flatten(io_lib:format("~p.",[DBs]))}]}]},
-                % default to log
-                {xmlelement, "field", [{"type", "list-single"},
-                                       {"label",
-                                        translate:translate(Lang, "Default")},
-                                       {"var", "dolog_default"}],
-                 [?DEFVAL(atom_to_list(DLD)),
-                  ?LISTLINE(translate:translate(Lang, "Log Messages"), "true"),
-                  ?LISTLINE(translate:translate(Lang, "Do Not Log Messages"), "false")
-                 ]},
-                % drop_messages_on_user_removal
-                {xmlelement, "field", [{"type", "list-single"},
-                                       {"label",
-                                        translate:translate(Lang, "Drop messages on user removal")},
-                                       {"var", "drop_messages_on_user_removal"}],
-                 [?DEFVAL(atom_to_list(MRemoval)),
-                  ?LISTLINE(translate:translate(Lang, "Drop"), "true"),
-                  ?LISTLINE(translate:translate(Lang, "Do not drop"), "false")
-                 ]},
-                % groupchat
-                {xmlelement, "field", [{"type", "list-single"},
-                                       {"label",
-                                        translate:translate(Lang, "Groupchat messages logging")},
-                                       {"var", "groupchat"}],
-                 [?DEFVAL(atom_to_list(GroupChat)),
-                  ?LISTLINE("all", "all"),
-                  ?LISTLINE("none", "none"),
-                  ?LISTLINE("send", "send"),
-                  ?LISTLINE("half", "half")
-                 ]},
-                % ignore_jids
-                {xmlelement, "field", [{"type", "text-multi"},
-                                       {"label",
-                                        translate:translate(
-                                          Lang, "Jids/Domains to ignore")},
-                                       {"var", "ignore_list"}],
-                 [{xmlelement, "value", [], [{xmlcdata, list_to_string(IgnoreJids)}]}]},
-                % purge older days
-                {xmlelement, "field", [{"type", "text-single"},
-                                       {"label",
-                                        translate:translate(
-                                          Lang, "Purge messages older than (days)")},
-                                       {"var", "purge_older_days"}],
-                 [{xmlelement, "value", [], [{xmlcdata, PurgeDays}]}]},
-                % poll users settings
-                {xmlelement, "field", [{"type", "text-single"},
-                                       {"label",
-                                        translate:translate(
-                                          Lang, "Poll users settings (seconds)")},
-                                       {"var", "poll_users_settings"}],
-                 [{xmlelement, "value", [], [{xmlcdata, integer_to_list(PollTime)}]}]}
-             ]}]}.
+    {result,
+     [#xmlel{name = <<"x">>,
+             attrs = [{<<"xmlns">>, ?NS_XDATA}],
+             children = [#xmlel{name = <<"title">>, attrs = [],
+                                children =
+                                 [{xmlcdata, 
+                                   <<(?T(Lang, <<"Messages logging engine settings">>))/binary,
+                                     (iolist_to_binary(" (run-time)"))/binary >>}]},
+                         #xmlel{name = <<"instructions">>, attrs = [],
+                                children =
+                                 [{xmlcdata, ?T(Lang, <<"Set run-time settings">>)}]},
+%                         #xmlel{name = <<"field">>,
+%                                attrs = [{<<"type">>, <<"list-single">>},
+%                                         {<<"label">>, ?T(Lang, <<"Backend">>)},
+%                                         {<<"var">>, <<"backend">>}],
+%                                children = DBsL},
+%                         #xmlel{name = <<"field">>,
+%                                attrs = [{<<"type">>, <<"text-multi">>},
+%                                         {<<"label">>, ?T(Lang, <<"dbs">>)},
+%                                         {<<"var">>, <<"dbs">>}],
+%                                children = [#xmlel{name = <<"value">>, attrs = [],
+%                                                   children = [{xmlcdata, iolist_to_binary(lists:flatten(io_lib:format("~p.",[DBs])))}]}
+%                                           ]
+%                               },
+                         #xmlel{name = <<"field">>,
+                                attrs = [{<<"type">>, <<"list-single">>},
+                                         {<<"label">>, ?T(Lang, <<"Default">>)},
+                                         {<<"var">>, <<"dolog_default">>}],
+                                children = 
+                                 [?DEFVAL(jlib:atom_to_binary(DLD)),
+                                  ?LISTLINE(<<"Log Messages">>, <<"true">>),
+                                  ?LISTLINE(<<"Do Not Log Messages">>, <<"false">>)
+                                 ]},
+                         #xmlel{name = <<"field">>,
+                                attrs = [{<<"type">>, <<"list-single">>},
+                                         {<<"label">>, ?T(Lang, <<"Drop messages on user removal">>)},
+                                         {<<"var">>, <<"drop_messages_on_user_removal">>}],
+                                children = 
+                                 [?DEFVAL(jlib:atom_to_binary(MRemoval)),
+                                  ?LISTLINE(<<"Drop">>, <<"true">>),
+                                  ?LISTLINE(<<"Do not drop">>, <<"false">>)
+                                 ]},
+                         #xmlel{name = <<"field">>,
+                                attrs = [{<<"type">>, <<"list-single">>},
+                                         {<<"label">>, ?T(Lang, <<"Groupchat messages logging">>)},
+                                         {<<"var">>, <<"groupchat">>}],
+                                children = 
+                                 [?DEFVAL(jlib:atom_to_binary(GroupChat)),
+                                  ?LISTLINE(<<"all">>, <<"all">>),
+                                  ?LISTLINE(<<"none">>, <<"none">>),
+                                  ?LISTLINE(<<"send">>, <<"send">>),
+                                  ?LISTLINE(<<"half">>, <<"half">>)
+                                 ]},
+                         #xmlel{name = <<"field">>,
+                                attrs = [{<<"type">>, <<"text-multi">>},
+                                         {<<"label">>, ?T(Lang, <<"Jids/Domains to ignore">>)},
+                                         {<<"var">>, <<"ignore_list">>}],
+                                children = [#xmlel{name = <<"value">>, attrs = [],
+                                                   children = [{xmlcdata, iolist_to_binary(list_to_string(IgnoreJids))}]}
+                                           ]
+                               },
+                         #xmlel{name = <<"field">>,
+                                attrs = [{<<"type">>, <<"text-single">>},
+                                         {<<"label">>, ?T(Lang, <<"Purge messages older than (days)">>)},
+                                         {<<"var">>, <<"purge_older_days">>}],
+                                children = [#xmlel{name = <<"value">>, attrs = [],
+                                                   children = [{xmlcdata, iolist_to_binary(PurgeDays)}]}
+                                           ]
+                               },
+                         #xmlel{name = <<"field">>,
+                                attrs = [{<<"type">>, <<"text-single">>},
+                                         {<<"label">>, ?T(Lang, <<"Poll users settings (seconds)">>)},
+                                         {<<"var">>, <<"poll_users_settings">>}],
+                                children = [#xmlel{name = <<"value">>, attrs = [],
+                                                   children = [{xmlcdata, integer_to_binary(PollTime)}]}
+                                           ]
+                               }
+                        ]}
+     ]}.
 
-get_form(_Host, ["mod_logdb"], #jid{luser = LUser, lserver = LServer} = _Jid, Lang) ->
-    get_user_form(LUser, LServer, Lang);
-get_form(_Host, ["mod_logdb_users", User], _JidFrom, Lang) ->
+%get_form(_Host, [<<"mod_logdb">>], #jid{luser = LUser, lserver = LServer} = _Jid, Lang) ->
+%    get_user_form(LUser, LServer, Lang);
+get_form(_Host, [<<"mod_logdb_users">>, User], _JidFrom, Lang) ->
     #jid{luser=LUser, lserver=LServer} = jlib:string_to_jid(User),
     get_user_form(LUser, LServer, Lang);
-get_form(Host, ["mod_logdb_settings"], _JidFrom, Lang) ->
+get_form(Host, [<<"mod_logdb_settings">>], _JidFrom, Lang) ->
     get_settings_form(Host, Lang);
 get_form(_Host, Command, _, _Lang) ->
     ?MYDEBUG("asked for form ~p", [Command]),
     {error, ?ERR_SERVICE_UNAVAILABLE}.
 
+check_log_list([]) ->
+    ok;
+check_log_list([<<>>]) ->
+    ok;
 check_log_list([Head | Tail]) ->
-    case lists:member($@, Head) of
-         true -> ok;
-         false -> throw(error)
+    case binary:match(Head, <<$@>>) of
+         nomatch -> throw(error);
+         {_, _} -> ok
     end,
     % this check for Head to be valid jid
     case jlib:string_to_jid(Head) of
@@ -1524,42 +1550,44 @@ check_log_list([Head | Tail]) ->
             throw(error);
          _ ->
             check_log_list(Tail)
-    end;
-check_log_list([]) ->
-    ok.
+    end.
 
+check_ignore_list([]) ->
+    ok;
+check_ignore_list([<<>>]) ->
+    ok;
+check_ignore_list([<<>> | Tail]) ->
+    check_ignore_list(Tail);
 check_ignore_list([Head | Tail]) ->
-    case lists:member($@, Head) of
-         true -> ok;
-         false -> throw(error)
+    case binary:match(Head, <<$@>>) of
+         {_, _} -> ok;
+         nomatch -> throw(error)
     end,
     % this check for Head to be valid jid
     case jlib:string_to_jid(Head) of
          error ->
             % this check for Head to be valid domain "@domain.org"
-            case lists:nth(1, Head) of
-                 $@ ->
+            case Head of
+                 << $@, Rest/binary >> ->
                     % TODO: this allows spaces and special characters in Head. May be change to nodeprep?
-                    case jlib:nameprep(lists:delete($@, Head)) of
+                    case jlib:nameprep(Rest) of
                          error -> throw(error);
-                         _ -> check_log_list(Tail)
+                         _ -> check_ignore_list(Tail)
                     end;
                  _ -> throw(error)
             end;
          _ ->
             check_ignore_list(Tail)
-    end;
-check_ignore_list([]) ->
-    ok.
+    end.
 
 parse_users_settings(XData) ->
-    DLD = case lists:keysearch("dolog_default", 1, XData) of
-               {value, {_, [String]}} when String == "true"; String == "false" ->
+    DLD = case lists:keysearch(<<"dolog_default">>, 1, XData) of
+               {value, {_, [String]}} when String == <<"true">>; String == <<"false">> ->
                  list_to_bool(String);
                _ ->
                  throw(bad_request)
           end,
-    DLL = case lists:keysearch("dolog_list", 1, XData) of
+    DLL = case lists:keysearch(<<"dolog_list">>, 1, XData) of
                false ->
                  throw(bad_request);
                {value, {_, [[]]}} ->
@@ -1572,7 +1600,7 @@ parse_users_settings(XData) ->
                          List1
                  end
           end,
-    DNLL = case lists:keysearch("donotlog_list", 1, XData) of
+    DNLL = case lists:keysearch(<<"donotlog_list">>, 1, XData) of
                false ->
                  throw(bad_request);
                {value, {_, [[]]}} ->
@@ -1590,28 +1618,28 @@ parse_users_settings(XData) ->
                    donotlog_list=DNLL}.
 
 parse_module_settings(XData) ->
-    DLD = case lists:keysearch("dolog_default", 1, XData) of
-               {value, {_, [Str1]}} when Str1 == "true"; Str1 == "false" ->
+    DLD = case lists:keysearch(<<"dolog_default">>, 1, XData) of
+               {value, {_, [Str1]}} when Str1 == <<"true">>; Str1 == <<"false">> ->
                  list_to_bool(Str1);
                _ ->
                  throw(bad_request)
           end,
-    MRemoval = case lists:keysearch("drop_messages_on_user_removal", 1, XData) of
-               {value, {_, [Str5]}} when Str5 == "true"; Str5 == "false" ->
+    MRemoval = case lists:keysearch(<<"drop_messages_on_user_removal">>, 1, XData) of
+               {value, {_, [Str5]}} when Str5 == <<"true">>; Str5 == <<"false">> ->
                  list_to_bool(Str5);
                _ ->
                  throw(bad_request)
           end,
-    GroupChat = case lists:keysearch("groupchat", 1, XData) of
-                     {value, {_, [Str2]}} when Str2 == "none";
-                                               Str2 == "all";
-                                               Str2 == "send";
-                                               Str2 == "half" ->
-                       list_to_atom(Str2);
+    GroupChat = case lists:keysearch(<<"groupchat">>, 1, XData) of
+                     {value, {_, [Str2]}} when Str2 == <<"none">>;
+                                               Str2 == <<"all">>;
+                                               Str2 == <<"send">>;
+                                               Str2 == <<"half">> ->
+                       jlib:binary_to_atom(Str2);
                      _ ->
                        throw(bad_request)
                 end,
-    Ignore = case lists:keysearch("ignore_list", 1, XData) of
+    Ignore = case lists:keysearch(<<"ignore_list">>, 1, XData) of
                   {value, {_, List}} ->
                     case catch check_ignore_list(List) of
                          ok ->
@@ -1622,20 +1650,20 @@ parse_module_settings(XData) ->
                   _ ->
                     throw(bad_request)
              end,
-    Purge = case lists:keysearch("purge_older_days", 1, XData) of
-                 {value, {_, ["never"]}} ->
+    Purge = case lists:keysearch(<<"purge_older_days">>, 1, XData) of
+                 {value, {_, [<<"never">>]}} ->
                    never;
                  {value, {_, [Str3]}} ->
-                   case catch list_to_integer(Str3) of
+                   case catch binary_to_integer(Str3) of
                         {'EXIT', {badarg, _}} -> throw(bad_request);
                         Int1 -> Int1
                    end;
                  _ ->
                    throw(bad_request)
             end,
-    Poll = case lists:keysearch("poll_users_settings", 1, XData) of
+    Poll = case lists:keysearch(<<"poll_users_settings">>, 1, XData) of
                 {value, {_, [Str4]}} ->
-                  case catch list_to_integer(Str4) of
+                  case catch binary_to_integer(Str4) of
                        {'EXIT', {badarg, _}} -> throw(bad_request);
                        Int2 -> Int2
                   end;
@@ -1649,10 +1677,13 @@ parse_module_settings(XData) ->
            drop_messages_on_user_removal=MRemoval,
            poll_users_settings=Poll}.
 
-set_form(From, _Host, ["mod_logdb"], _Lang, XData) ->
+set_form(From, _Host, [<<"mod_logdb">>], _Lang, XData) ->
     #jid{luser=LUser, lserver=LServer} = From,
     case catch parse_users_settings(XData) of
          bad_request ->
+            {error, ?ERR_BAD_REQUEST};
+         {'EXIT', Reason} ->
+            ?ERROR_MSG("Failed to set form ~p", [Reason]),
             {error, ?ERR_BAD_REQUEST};
          UserSettings ->
             case mod_logdb:set_user_settings(LUser, LServer, UserSettings) of
@@ -1662,10 +1693,13 @@ set_form(From, _Host, ["mod_logdb"], _Lang, XData) ->
                     {error, ?ERR_INTERNAL_SERVER_ERROR}
             end
     end;
-set_form(_From, _Host, ["mod_logdb_users", User], _Lang, XData) ->
+set_form(_From, _Host, [<<"mod_logdb_users">>, User], _Lang, XData) ->
     #jid{luser=LUser, lserver=LServer} = jlib:string_to_jid(User),
     case catch parse_users_settings(XData) of
          bad_request -> {error, ?ERR_BAD_REQUEST};
+         {'EXIT', Reason} ->
+            ?ERROR_MSG("Failed to set form ~p", [Reason]),
+            {error, ?ERR_BAD_REQUEST};
          UserSettings ->
             case mod_logdb:set_user_settings(LUser, LServer, UserSettings) of
                  ok ->
@@ -1674,9 +1708,12 @@ set_form(_From, _Host, ["mod_logdb_users", User], _Lang, XData) ->
                     {error, ?ERR_INTERNAL_SERVER_ERROR}
             end
     end;
-set_form(_From, Host, ["mod_logdb_settings"], _Lang, XData) ->
+set_form(_From, Host, [<<"mod_logdb_settings">>], _Lang, XData) ->
     case catch parse_module_settings(XData) of
          bad_request -> {error, ?ERR_BAD_REQUEST};
+         {'EXIT', Reason} ->
+            ?ERROR_MSG("Failed to set form ~p", [Reason]),
+            {error, ?ERR_BAD_REQUEST};
          Settings ->
             case mod_logdb:set_module_settings(Host, Settings) of
                  ok ->
@@ -1693,7 +1730,7 @@ set_form(From, _Host, Node, _Lang, XData) ->
 %adhoc_sm_items(Acc, From, To, Request) ->
 %    ?MYDEBUG("adhoc_sm_items Acc=~p From=~p To=~p Request=~p", [Acc, From, To, Request]),
 %    Acc.
-
+%
 %adhoc_sm_commands(Acc, From, To, Request) ->
 %    ?MYDEBUG("adhoc_sm_commands Acc=~p From=~p To=~p Request=~p", [Acc, From, To, Request]),
 %    Acc.
@@ -1707,26 +1744,30 @@ get_all_vh_users(Host, Server, Lang) ->
             case length(SUsers) of
                 N when N =< 100 ->
                     lists:map(fun({S, U}) ->
-                                      ?NODE(U ++ "@" ++ S, "mod_logdb_users/" ++ U ++ "@" ++ S)
-                              end, SUsers);
+                                      ?NODE(<< U/binary, "@", S/binary >>, 
+                                            << (iolist_to_binary("mod_logdb_users/"))/binary, U/binary, "@", S/binary >>)
+                              end,
+                              SUsers);
                 N ->
                     NParts = trunc(math:sqrt(N * 0.618)) + 1,
                     M = trunc(N / NParts) + 1,
                     lists:map(fun(K) ->
                                       L = K + M - 1,
-                                      Node =
-                                          "@" ++ integer_to_list(K) ++
-                                          "-" ++ integer_to_list(L),
+                                      Node = <<"@",
+                                               (iolist_to_binary(integer_to_list(K)))/binary,
+                                               "-",
+                                               (iolist_to_binary(integer_to_list(L)))/binary
+                                             >>,
                                       {FS, FU} = lists:nth(K, SUsers),
                                       {LS, LU} =
                                           if L < N -> lists:nth(L, SUsers);
                                              true -> lists:last(SUsers)
                                           end,
                                       Name =
-                                          FU ++ "@" ++ FS ++
-                                          " -- " ++
-                                          LU ++ "@" ++ LS,
-                                      ?NODE(Name, "mod_logdb_users/" ++ Node)
+                                          <<FU/binary, "@", FS/binary,
+                                           " -- ",
+                                           LU/binary, "@", LS/binary>>,
+                                      ?NODE(Name, << (iolist_to_binary("mod_logdb_users/"))/binary, Node/binary >>)
                               end, lists:seq(1, N, M))
             end
     end.
