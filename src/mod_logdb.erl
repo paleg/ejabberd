@@ -588,18 +588,19 @@ packet_parse(Owner, Peer, Packet, Direction, State) ->
 
 % called from handle_cast({addlog, _}, _) -> true (log messages) | false (do not log messages)
 filter(Owner, Peer, State) ->
-    OwnerStr = binary_to_list(Owner#jid.luser)++"@"++binary_to_list(Owner#jid.lserver),
-    OwnerServ = "@"++binary_to_list(Owner#jid.lserver),
-    PeerStr = binary_to_list(Peer#jid.luser)++"@"++binary_to_list(Peer#jid.lserver),
-    PeerServ = "@"++binary_to_list(Peer#jid.lserver),
+    OwnerBin = << (Owner#jid.luser)/binary, "@", (Owner#jid.lserver)/binary >>,
+    OwnerServ = << "@", (Owner#jid.lserver)/binary >>,
+    PeerBin = << (Peer#jid.luser)/binary, "@", (Peer#jid.lserver)/binary >>,
+    PeerServ = << "@", (Peer#jid.lserver)/binary >>,
 
     LogTo = case ets:match_object(ets_settings_table(State#state.vhost),
                                   #user_settings{owner_name=Owner#jid.luser, _='_'}) of
                  [#user_settings{dolog_default=Default,
                                  dolog_list=DLL,
                                  donotlog_list=DNLL}] ->
-                      A = lists:member(PeerStr, DLL),
-                      B = lists:member(PeerStr, DNLL),
+
+                      A = lists:member(PeerBin, DLL),
+                      B = lists:member(PeerBin, DNLL),
                       if
                         A -> true;
                         B -> false;
@@ -610,8 +611,8 @@ filter(Owner, Peer, State) ->
                  _ -> State#state.dolog_default
 	    end,
     lists:all(fun(O) -> O end,
-              [not lists:member(OwnerStr, State#state.ignore_jids),
-               not lists:member(PeerStr, State#state.ignore_jids),
+              [not lists:member(OwnerBin, State#state.ignore_jids),
+               not lists:member(PeerBin, State#state.ignore_jids),
                not lists:member(OwnerServ, State#state.ignore_jids),
                not lists:member(PeerServ, State#state.ignore_jids),
                LogTo]).
