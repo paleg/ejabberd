@@ -106,7 +106,7 @@ init([VHost, Opts]) ->
     DBsRaw = gen_mod:get_opt(dbs, Opts, fun(A) -> A end, [{mnesia, []}]),
     DBs = case lists:keysearch(mnesia, 1, DBsRaw) of
                false -> lists:append(DBsRaw, [{mnesia,[]}]);
-               DBsResult -> DBsResult
+               {value, _} -> DBsRaw
           end,
     VHostDB = gen_mod:get_opt(vhosts, Opts, fun(A) -> A end, [{VHost, mnesia}]),
     % 10 is default becouse of using in clustered environment
@@ -127,7 +127,7 @@ init([VHost, Opts]) ->
                  end
          end,
 
-    ?MYDEBUG("Starting mod_logdb for ~s with ~s backend", [VHost, DBName]),
+    ?MYDEBUG("Starting mod_logdb for '~s' with '~s' backend", [VHost, DBName]),
 
     DBMod = list_to_atom(atom_to_list(?MODULE) ++ "_" ++ atom_to_list(DBName)),
 
