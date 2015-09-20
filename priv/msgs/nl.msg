@@ -375,3 +375,17 @@
 {"Your Jabber account was successfully created.","Uw Jabber-account is succesvol gecreeerd."}.
 {"Your Jabber account was successfully deleted.","Uw Jabber-account is succesvol verwijderd."}.
 {"Your messages to ~s are being blocked. To unblock them, visit ~s","Uw berichten aan ~s worden geblokkeerd. Om ze te deblokkeren, ga naar ~s"}.
+% mod_logdb
+{"Users Messages", "Gebruikersberichten"}.
+{"Date", "Datum"}.
+{"Count", "Aantal"}.
+{"Logged messages for ~s", "Gelogde berichten van ~s"}.
+{"Logged messages for ~s at ~s", "Gelogde berichten van ~s op ~s"}.
+{" at ", " op "}.
+{"No logged messages for ~s", "Geen gelogde berichten van ~s"}.
+{"No logged messages for ~s at ~s", "Geen gelogde berichten van ~s op ~s"}.
+{"Date, Time", "Datum en tijd"}.
+{"Direction: Jid", "Richting: Jabber ID"}.
+{"Subject", "Onderwerp"}.
+{"Body", "Berichtveld"}.
+{"Messages", "Berichten"}.
