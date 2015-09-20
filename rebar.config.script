@@ -82,7 +82,7 @@ PostHooks = [ConfigureCmd("p1_tls", ""),
 
 CfgDeps = lists:flatmap(
             fun({mysql, true}) ->
-                    [{p1_mysql, ".*", {git, "git://github.com/processone/mysql"}}];
+                    [{p1_mysql, ".*", {git, "git://github.com/paleg/mysql", {branch, "multi"}}}];
                ({pgsql, true}) ->
                     [{p1_pgsql, ".*", {git, "git://github.com/processone/pgsql"}}];
                ({pam, true}) ->
