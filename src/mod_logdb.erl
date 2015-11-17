@@ -20,7 +20,7 @@
 % gen_server
 -export([code_change/3,handle_call/3,handle_cast/2,handle_info/2,init/1,terminate/2]).
 % hooks
--export([send_packet/3, receive_packet/4, remove_user/2]).
+-export([send_packet/4, receive_packet/5, remove_user/2]).
 -export([get_local_identity/5,
          get_local_features/5,
          get_local_items/5,
@@ -477,15 +477,17 @@ code_change(_OldVsn, State, _Extra) ->
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % TODO: change to/from to list as sql stores it as list
-send_packet(Owner, Peer, P) ->
+send_packet(P, _C2SState, Owner, Peer) ->
     VHost = Owner#jid.lserver,
     Proc = gen_mod:get_module_proc(VHost, ?PROCNAME),
-    gen_server:cast(Proc, {addlog, to, Owner, Peer, P}).
+    gen_server:cast(Proc, {addlog, to, Owner, Peer, P}),
+    P.
 
-receive_packet(_JID, Peer, Owner, P) ->
+receive_packet(P, _C2SState, _JID, Peer, Owner) ->
     VHost = Owner#jid.lserver,
     Proc = gen_mod:get_module_proc(VHost, ?PROCNAME),
-    gen_server:cast(Proc, {addlog, from, Owner, Peer, P}).
+    gen_server:cast(Proc, {addlog, from, Owner, Peer, P}),
+    P.
 
 remove_user(User, Server) ->
     LUser = jlib:nodeprep(User),
