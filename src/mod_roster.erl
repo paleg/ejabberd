@@ -1513,7 +1513,7 @@ user_roster(User, Server, Query, Lang) ->
 
                                      ?XAE(<<"td">>, [{<<"class">>, <<"valign">>}],
                                           [?INPUTT(<<"submit">>,
-                                                   <<Name,
+                                                   <<Name/binary,
                                                    (ejabberd_web_admin:term_to_id(R#roster.jid))/binary>>,
                                                    Value)]);
                                   false ->
