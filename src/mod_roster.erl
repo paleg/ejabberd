@@ -1646,7 +1646,7 @@ user_roster_item_parse_query(User, Server, Items,
 				      throw(submitted);
                   false ->
                     case lists:keysearch(
-                           <<"donotlog">>, (ejabberd_web_admin:term_to_id(JID))/binary, 1, Query) of
+                           <<"donotlog", (ejabberd_web_admin:term_to_id(JID))/binary>>, 1, Query) of
                         {value, _} ->
                              Peer = jlib:jid_to_string(JID),
                              Settings = mod_logdb:get_user_settings(User, Server),
@@ -1661,7 +1661,7 @@ user_roster_item_parse_query(User, Server, Items,
                              throw(nothing);
                         false ->
                            case lists:keysearch(
-                                  <<"dolog">>, (ejabberd_web_admin:term_to_id(JID))/binary, 1, Query) of
+                                  <<"dolog", (ejabberd_web_admin:term_to_id(JID))/binary>>, 1, Query) of
                                {value, _} ->
                                   Peer = jlib:jid_to_string(JID),
                                   Settings = mod_logdb:get_user_settings(User, Server),
