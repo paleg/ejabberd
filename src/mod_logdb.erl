@@ -1386,7 +1386,7 @@ get_user_form(LUser, LServer, Lang) ->
                    dolog_list=DLL,
                    donotlog_list=DNLL} = get_user_settings(LUser, LServer),
     {result,
-     [#xmlel{name = <<"x">>, 
+     [#xmlel{name = <<"x">>,
              attrs = [{<<"xmlns">>, ?NS_XDATA}],
              children = [
                 #xmlel{name = <<"title">>, attrs = [],
@@ -1402,7 +1402,7 @@ get_user_form(LUser, LServer, Lang) ->
                        attrs = [{<<"type">>, <<"list-single">>},
                                 {<<"label">>, ?T(Lang, <<"Default">>)},
                                 {<<"var">>, <<"dolog_default">>}],
-                       children = 
+                       children =
                         [?DEFVAL(jlib:atom_to_binary(DLD)),
                          ?LISTLINE(<<"Log Messages">>, <<"true">>),
                          ?LISTLINE(<<"Do Not Log Messages">>, <<"false">>)
@@ -1452,7 +1452,7 @@ get_settings_form(Host, Lang) ->
              attrs = [{<<"xmlns">>, ?NS_XDATA}],
              children = [#xmlel{name = <<"title">>, attrs = [],
                                 children =
-                                 [{xmlcdata, 
+                                 [{xmlcdata,
                                    <<(?T(Lang, <<"Messages logging engine settings">>))/binary,
                                      (iolist_to_binary(" (run-time)"))/binary >>}]},
                          #xmlel{name = <<"instructions">>, attrs = [],
@@ -1475,7 +1475,7 @@ get_settings_form(Host, Lang) ->
                                 attrs = [{<<"type">>, <<"list-single">>},
                                          {<<"label">>, ?T(Lang, <<"Default">>)},
                                          {<<"var">>, <<"dolog_default">>}],
-                                children = 
+                                children =
                                  [?DEFVAL(jlib:atom_to_binary(DLD)),
                                   ?LISTLINE(<<"Log Messages">>, <<"true">>),
                                   ?LISTLINE(<<"Do Not Log Messages">>, <<"false">>)
@@ -1484,7 +1484,7 @@ get_settings_form(Host, Lang) ->
                                 attrs = [{<<"type">>, <<"list-single">>},
                                          {<<"label">>, ?T(Lang, <<"Drop messages on user removal">>)},
                                          {<<"var">>, <<"drop_messages_on_user_removal">>}],
-                                children = 
+                                children =
                                  [?DEFVAL(jlib:atom_to_binary(MRemoval)),
                                   ?LISTLINE(<<"Drop">>, <<"true">>),
                                   ?LISTLINE(<<"Do not drop">>, <<"false">>)
@@ -1493,7 +1493,7 @@ get_settings_form(Host, Lang) ->
                                 attrs = [{<<"type">>, <<"list-single">>},
                                          {<<"label">>, ?T(Lang, <<"Groupchat messages logging">>)},
                                          {<<"var">>, <<"groupchat">>}],
-                                children = 
+                                children =
                                  [?DEFVAL(jlib:atom_to_binary(GroupChat)),
                                   ?LISTLINE(<<"all">>, <<"all">>),
                                   ?LISTLINE(<<"none">>, <<"none">>),
@@ -1747,7 +1747,7 @@ get_all_vh_users(Host, Server, Lang) ->
             case length(SUsers) of
                 N when N =< 100 ->
                     lists:map(fun({S, U}) ->
-                                      ?NODE(<< U/binary, "@", S/binary >>, 
+                                      ?NODE(<< U/binary, "@", S/binary >>,
                                             << (iolist_to_binary("mod_logdb_users/"))/binary, U/binary, "@", S/binary >>)
                               end,
                               SUsers);
@@ -1916,7 +1916,7 @@ vhost_messages_stats_at(Server, Query, Lang, Date) ->
                          UserBin = iolist_to_binary(User),
                          ID = jlib:encode_base64( << UserBin/binary, Server/binary >> ),
                          ?XE(<<"tr">>,
-                          [?XAE(<<"td">>, [{<<"class">>, <<"valign">>}], 
+                          [?XAE(<<"td">>, [{<<"class">>, <<"valign">>}],
                             [?INPUT(<<"checkbox">>, <<"selected">>, ID)]),
                            ?XE(<<"td">>, [?AC(<< <<"../user/">>/binary, UserBin/binary, <<"/messages/">>/binary, Date/binary >>, UserBin)]),
                            ?XC(<<"td">>, integer_to_binary(Count))
