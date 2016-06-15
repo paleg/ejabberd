@@ -546,12 +546,12 @@ copy_messages_ctl(Val, _VHost, _Args) ->
 % handle_cast({addlog, E}, _)
 % raw packet -> #msg
 packet_parse(Owner, Peer, Packet, Direction, State) ->
-    case xml:get_subtag(Packet, <<"body">>) of
+    case fxml:get_subtag(Packet, <<"body">>) of
          false ->
            ignore;
          Body_xml ->
            Message_type =
-              case xml:get_tag_attr_s(<<"type">>, Packet) of
+              case fxml:get_tag_attr_s(<<"type">>, Packet) of
                    <<"error">> ->   throw(ignore);
                    []          ->   <<"normal">>;
                    MType       ->   MType
@@ -583,13 +583,13 @@ packet_parse(Owner, Peer, Packet, Direction, State) ->
                    ok
            end,
 
-           Message_body = xml:get_tag_cdata(Body_xml),
+           Message_body = fxml:get_tag_cdata(Body_xml),
            Message_subject =
-              case xml:get_subtag(Packet, <<"subject">>) of
+              case fxml:get_subtag(Packet, <<"subject">>) of
                    false ->
                      <<"">>;
                    Subject_xml ->
-                     xml:get_tag_cdata(Subject_xml)
+                     fxml:get_tag_cdata(Subject_xml)
               end,
 
            OwnerName = stringprep:tolower(Owner#jid.user),
@@ -631,7 +631,7 @@ filter(Owner, Peer, State) ->
                         true -> State#state.dolog_default
                       end;
                  _ -> State#state.dolog_default
-	    end,
+            end,
     lists:all(fun(O) -> O end,
               [not lists:member(OwnerBin, State#state.ignore_jids),
                not lists:member(PeerBin, State#state.ignore_jids),
@@ -1282,7 +1282,7 @@ adhoc_local_items(Acc, From, #jid{lserver = LServer, server = Server} = To,
     Nodes = recursively_get_local_items(LServer, "", Server, Lang),
     Nodes1 = lists:filter(
                fun(N) ->
-                        Nd = xml:get_tag_attr_s("node", N),
+                        Nd = fxml:get_tag_attr_s("node", N),
                         F = get_local_features([], From, To, Nd, Lang),
                         case F of
                             {result, [?NS_COMMANDS]} ->
@@ -1306,8 +1306,8 @@ recursively_get_local_items(LServer, Node, Server, Lang) ->
     Nodes = lists:flatten(
       lists:map(
         fun(N) ->
-                S = xml:get_tag_attr_s("jid", N),
-                Nd = xml:get_tag_attr_s("node", N),
+                S = fxml:get_tag_attr_s("jid", N),
+                Nd = fxml:get_tag_attr_s("node", N),
                 if (S /= Server) or (Nd == "") ->
                     [];
                 true ->
