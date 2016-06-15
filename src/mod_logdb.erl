@@ -16,7 +16,7 @@
 % supervisor
 -export([start_link/2]).
 % gen_mod
--export([start/2,stop/1]).
+-export([start/2,stop/1,mod_opt_type/1]).
 % gen_server
 -export([code_change/3,handle_call/3,handle_cast/2,handle_info/2,init/1,terminate/2]).
 % hooks
@@ -186,6 +186,26 @@ stop(VHost) ->
     %timer:sleep(10000),
     ok = supervisor:terminate_child(ejabberd_sup, Proc),
     ok = supervisor:delete_child(ejabberd_sup, Proc).
+
+mod_opt_type(dbs) ->
+    fun (A) when is_list(A) -> A end;
+mod_opt_type(vhosts) ->
+    fun (A) when is_list(A) -> A end;
+mod_opt_type(poll_users_settings) ->
+    fun (I) when is_integer(I) -> I end;
+mod_opt_type(groupchat) ->
+    fun (all) -> all;
+        (send) -> send;
+        (none) -> none
+    end;
+mod_opt_type(dolog_default) ->
+    fun (B) when is_boolean(B) -> B end;
+mod_opt_type(ignore_jids) ->
+    fun (A) when is_list(A) -> A end;
+mod_opt_type(purge_older_days) ->
+    fun (I) when is_integer(I) -> I end;
+mod_opt_type(_) ->
+    [dbs, vhosts, poll_users_settings, groupchat, dolog_default, ignore_jids, purge_older_days].
 
 handle_call({cleanup}, _From, State) ->
     cleanup(State),
