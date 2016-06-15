@@ -1279,7 +1279,7 @@ adhoc_local_items(Acc, From, #jid{lserver = LServer, server = Server} = To,
                 {result, Its} -> Its;
                 empty -> []
             end,
-    Nodes = recursively_get_local_items(LServer, "", Server, Lang),
+    Nodes = recursively_get_local_items(LServer, <<"">>, Server, Lang),
     Nodes1 = lists:filter(
                fun(N) ->
                         Nd = fxml:get_tag_attr_s("node", N),
