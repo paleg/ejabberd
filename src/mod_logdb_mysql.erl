@@ -171,8 +171,8 @@ handle_call({log_message, Msg}, _From, #state{dbref=DBRef, vhost=VHost}=State) -
                  "'", Peer_resource_id, "',",
                  "'", atom_to_list(Msg#msg.direction), "',",
                  "'", binary_to_list(Msg#msg.type), "',",
-                 "'", binary_to_list( ejabberd_odbc:escape(Msg#msg.subject) ), "',",
-                 "'", binary_to_list( ejabberd_odbc:escape(Msg#msg.body) ), "',",
+                 "'", binary_to_list( ejabberd_sql:escape(Msg#msg.subject) ), "',",
+                 "'", binary_to_list( ejabberd_sql:escape(Msg#msg.body) ), "',",
                  "'", Msg#msg.timestamp, "');"],
 
     Reply =
@@ -990,7 +990,7 @@ get_server_id(DBRef, VHost, Server) ->
 
 get_resource_id_from_db(DBRef, VHost, Resource) ->
   SQuery = ["SELECT resource_id FROM ",resources_table(VHost)," ",
-               "WHERE resource=\"",binary_to_list(ejabberd_odbc:escape(iolist_to_binary(Resource))),"\";"],
+               "WHERE resource=\"",binary_to_list(ejabberd_sql:escape(iolist_to_binary(Resource))),"\";"],
   case sql_query_internal(DBRef, SQuery) of
        % no such resource in db
        {data, []} ->
@@ -1009,7 +1009,7 @@ get_resource_id(DBRef, VHost, Resource) ->
               % no such resource in db
               {ok, []} ->
                  IQuery = ["INSERT INTO ",resources_table(VHost)," ",
-                              "SET resource=\"",binary_to_list(ejabberd_odbc:escape(iolist_to_binary(Resource))),"\";"],
+                              "SET resource=\"",binary_to_list(ejabberd_sql:escape(iolist_to_binary(Resource))),"\";"],
                  case sql_query_internal_silent(DBRef, IQuery) of
                       {updated, _} ->
                           {ok, NewId} = get_resource_id_from_db(DBRef, VHost, Resource),

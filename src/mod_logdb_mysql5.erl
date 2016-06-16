@@ -366,11 +366,11 @@ handle_cast({log_message, Msg}, #state{dbref=DBRef, vhost=VHost}=State) ->
                          "'", binary_to_list(Msg#msg.owner_name), "',",
                          "'", binary_to_list(Msg#msg.peer_name), "',",
                          "'", binary_to_list(Msg#msg.peer_server), "',",
-                         "'", binary_to_list( ejabberd_odbc:escape(Msg#msg.peer_resource) ), "',",
+                         "'", binary_to_list( ejabberd_sql:escape(Msg#msg.peer_resource) ), "',",
                          "'", atom_to_list(Msg#msg.direction), "',",
                          "'", binary_to_list(Msg#msg.type), "',",
-                         "'", binary_to_list( ejabberd_odbc:escape(Msg#msg.subject) ), "',",
-                         "'", binary_to_list( ejabberd_odbc:escape(Msg#msg.body) ), "',",
+                         "'", binary_to_list( ejabberd_sql:escape(Msg#msg.subject) ), "',",
+                         "'", binary_to_list( ejabberd_sql:escape(Msg#msg.body) ), "',",
                          "'", Msg#msg.timestamp, "');"],
 
             case sql_query_internal(DBRef, Query) of
