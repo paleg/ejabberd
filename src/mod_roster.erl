@@ -1013,7 +1013,7 @@ user_roster(User, Server, Query, Lang) ->
 								     <<"Remove">>)]),
                              case gen_mod:is_loaded(Server, mod_logdb) of
                                   true ->
-                                     Peer = jlib:jid_to_string(R#roster.jid),
+                                     Peer = jid:encode(R#roster.jid),
                                      A = lists:member(Peer, Settings#user_settings.dolog_list),
                                      B = lists:member(Peer, Settings#user_settings.donotlog_list),
                                      {Name, Value} =
@@ -1147,13 +1147,13 @@ user_roster_item_parse_query(User, Server, Items,
                     case lists:keysearch(
                            <<"donotlog", (ejabberd_web_admin:term_to_id(JID))/binary>>, 1, Query) of
                         {value, _} ->
-                             Peer = jlib:jid_to_string(JID),
+                             Peer = jid:encode(JID),
                              Settings = mod_logdb:get_user_settings(User, Server),
                              DNLL = case lists:member(Peer, Settings#user_settings.donotlog_list) of
                                          false -> lists:append(Settings#user_settings.donotlog_list, [Peer]);
                                          true -> Settings#user_settings.donotlog_list
                                     end,
-                             DLL = lists:delete(jlib:jid_to_string(JID), Settings#user_settings.dolog_list),
+                             DLL = lists:delete(jid:encode(JID), Settings#user_settings.dolog_list),
                              Sett = Settings#user_settings{donotlog_list=DNLL, dolog_list=DLL},
                              % TODO: check returned value
                              ok = mod_logdb:set_user_settings(User, Server, Sett),
@@ -1162,13 +1162,13 @@ user_roster_item_parse_query(User, Server, Items,
                            case lists:keysearch(
                                   <<"dolog", (ejabberd_web_admin:term_to_id(JID))/binary>>, 1, Query) of
                                {value, _} ->
-                                  Peer = jlib:jid_to_string(JID),
+                                  Peer = jid:encode(JID),
                                   Settings = mod_logdb:get_user_settings(User, Server),
                                   DLL = case lists:member(Peer, Settings#user_settings.dolog_list) of
                                              false -> lists:append(Settings#user_settings.dolog_list, [Peer]);
                                              true -> Settings#user_settings.dolog_list
                                         end,
-                                  DNLL = lists:delete(jlib:jid_to_string(JID), Settings#user_settings.donotlog_list),
+                                  DNLL = lists:delete(jid:encode(JID), Settings#user_settings.donotlog_list),
                                   Sett = Settings#user_settings{donotlog_list=DNLL, dolog_list=DLL},
                                   % TODO: check returned value
                                   ok = mod_logdb:set_user_settings(User, Server, Sett),
