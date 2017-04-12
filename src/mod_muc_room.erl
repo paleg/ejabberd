@@ -583,6 +583,12 @@ handle_sync_event({muc_unsubscribe, From}, _From, StateName, StateData) ->
 handle_sync_event({is_subscribed, From}, _From, StateName, StateData) ->
     IsSubs = ?DICT:is_key(jid:split(From), StateData#state.subscribers),
     {reply, IsSubs, StateName, StateData};
+handle_sync_event({get_jid_nick, Jid}, _From, StateName, StateData) ->
+    R = case (?DICT):find(jlib:jid_tolower(Jid), StateData#state.users) of
+             error -> [];
+             {ok, {user, _, Nick, _, _}} -> Nick
+        end,
+    {reply, R, StateName, StateData};
 handle_sync_event(_Event, _From, StateName,
 		  StateData) ->
     Reply = ok, {reply, Reply, StateName, StateData}.
