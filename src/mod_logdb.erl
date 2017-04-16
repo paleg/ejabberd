@@ -115,7 +115,7 @@ init([VHost, Opts]) ->
                {value, _} -> DBsRaw
           end,
     VHostDB = gen_mod:get_opt(vhosts, Opts, fun(A) -> A end, [{VHost, mnesia}]),
-    % 10 is default becouse of using in clustered environment
+    % 10 is default because of using in clustered environment
     PollUsersSettings = gen_mod:get_opt(poll_users_settings, Opts, fun(A) -> A end, 10),
 
     {DBName, DBOpts} =
@@ -171,13 +171,6 @@ cleanup(#state{vhost=VHost} = _State) ->
     ?MYDEBUG("Removed hooks for ~p", [VHost]),
 
     ejabberd_commands:unregister_commands(get_commands_spec()),
-    %Supported_backends = lists:flatmap(fun({Backend, _Opts}) ->
-    %                                        [atom_to_list(Backend), " "]
-    %                                   end, State#state.dbs),
-    %ejabberd_ctl:unregister_commands(
-    %                       VHost,
-    %                       [{"copy_messages backend", "copy messages from backend to current backend. backends could be: " ++ Supported_backends }],
-    %                       ?MODULE, copy_messages_ctl),
     ?MYDEBUG("Unregistered commands for ~p", [VHost]).
 
 stop(VHost) ->
@@ -190,9 +183,14 @@ stop(VHost) ->
 
 get_commands_spec() ->
     [#ejabberd_commands{name = rebuild_stats, tags = [logdb],
-            desc = "rebuild mod_logdb stats for vhost",
+            desc = "Rebuild mod_logdb stats for given host",
             module = ?MODULE, function = rebuild_stats,
             args = [{host, binary}],
+            result = {res, rescode}},
+     #ejabberd_commands{name = copy_messages, tags = [logdb],
+            desc = "Copy logdb messages from given backend to current backend for given host",
+            module = ?MODULE, function = copy_messages_ctl,
+            args = [{host, binary}, {backend, binary}, {date, binary}],
             result = {res, rescode}}].
 
 mod_opt_type(dbs) ->
@@ -352,10 +350,10 @@ handle_cast({rebuild_stats}, #state{dbmod=DBMod, vhost=VHost}=State) ->
     DBMod:rebuild_stats(VHost),
     {noreply, State};
 handle_cast({copy_messages, Backend}, State) ->
-    spawn(?MODULE, copy_messages, [[State, Backend]]),
+    spawn(?MODULE, copy_messages, [[State, Backend, []]]),
     {noreply, State};
 handle_cast({copy_messages, Backend, Date}, State) ->
-    spawn(?MODULE, copy_messages, [[State, Backend, Date]]),
+    spawn(?MODULE, copy_messages, [[State, Backend, [binary_to_list(Date)]]]),
     {noreply, State};
 handle_cast(Msg, State) ->
     ?INFO_MSG("Got cast Msg:~p, State:~p", [Msg, State]),
@@ -429,13 +427,6 @@ handle_info(start, #state{dbmod=DBMod, vhost=VHost}=State) ->
            ?MYDEBUG("Added hooks for ~p", [VHost]),
 
            ejabberd_commands:register_commands(get_commands_spec()),
-           %Supported_backends = lists:flatmap(fun({Backend, _Opts}) ->
-           %                                       [atom_to_list(Backend), " "]
-           %                                   end, State#state.dbs),
-           %ejabberd_ctl:register_commands(
-           %                VHost,
-           %                [{"copy_messages backend", "copy messages from backend to current backend. backends could be: " ++ Supported_backends }],
-           %                ?MODULE, copy_messages_ctl),
            ?MYDEBUG("Registered commands for ~p", [VHost]),
 
            NewState=State#state{monref = MonRef, backendPid=SPid, purgeRef=TrefPurge, pollRef=TrefPoll},
@@ -529,16 +520,15 @@ rebuild_stats(VHost) ->
     gen_server:cast(Proc, {rebuild_stats}),
     ok.
 
-copy_messages_ctl(_Val, VHost, ["copy_messages", Backend]) ->
+copy_messages_ctl(VHost, Backend, <<"all">>) ->
     Proc = gen_mod:get_module_proc(VHost, ?PROCNAME),
     gen_server:cast(Proc, {copy_messages, Backend}),
     ok;
-copy_messages_ctl(_Val, VHost, ["copy_messages", Backend, Date]) ->
+copy_messages_ctl(VHost, Backend, Date) ->
     Proc = gen_mod:get_module_proc(VHost, ?PROCNAME),
     gen_server:cast(Proc, {copy_messages, Backend, Date}),
-    ok;
-copy_messages_ctl(Val, _VHost, _Args) ->
-    Val.
+    ok.
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 % misc operations
@@ -817,11 +807,9 @@ vhost_messages_at_parse_query(VHost, Date, Stats, Query) ->
              nothing
     end.
 
-copy_messages([#state{vhost=VHost}=State, From]) ->
-    ?INFO_MSG("Going to copy messages from ~p for ~p", [From, VHost]),
-
+copy_messages([#state{vhost=VHost}=State, From, DatesIn]) ->
     {FromDBName, FromDBOpts} =
-         case lists:keysearch(list_to_atom(From), 1, State#state.dbs) of
+         case lists:keysearch(misc:binary_to_atom(From), 1, State#state.dbs) of
               {value, {FN, FO}} ->
                  {FN, FO};
               false ->
@@ -833,34 +821,24 @@ copy_messages([#state{vhost=VHost}=State, From]) ->
 
     {ok, _FromPid} = FromDBMod:start(VHost, FromDBOpts),
 
-    Dates = FromDBMod:get_dates(VHost),
+    Dates = case DatesIn of
+                 [] -> FromDBMod:get_dates(VHost);
+                 _ -> DatesIn
+            end,
+
     DatesLength = length(Dates),
 
-    lists:foldl(fun(Date, Acc) ->
-                   case copy_messages_int([FromDBMod, State#state.dbmod, VHost, Date]) of
-                        ok ->
-                          ?INFO_MSG("Copied messages at ~p (~p/~p)", [Date, Acc, DatesLength]);
-                        Value ->
-                          ?ERROR_MSG("Failed to copy messages at ~p (~p/~p): ~p", [Date, Acc, DatesLength, Value]),
-                          FromDBMod:stop(VHost),
-                          throw(error)
-                   end,
-                   Acc + 1
-                  end, 1, Dates),
-    ?INFO_MSG("Copied messages from ~p",  [From]),
-    FromDBMod:stop(VHost);
-copy_messages([#state{vhost=VHost}=State, From, Date]) ->
-    {value, {FromDBName, FromDBOpts}} = lists:keysearch(list_to_atom(From), 1, State#state.dbs),
-    FromDBMod = list_to_atom(atom_to_list(?MODULE) ++ "_" ++ atom_to_list(FromDBName)),
-    {ok, _FromPid} = FromDBMod:start(VHost, FromDBOpts),
-    case catch copy_messages_int([FromDBMod, State#state.dbmod, VHost, Date]) of
-         {'exit', Reason} ->
-           ?ERROR_MSG("Failed to copy messages at ~p: ~p", [Date, Reason]);
-         ok ->
-           ?INFO_MSG("Copied messages at ~p", [Date]);
-         Value ->
-           ?ERROR_MSG("Failed to copy messages at ~p: ~p", [Date, Value])
-    end,
+    catch lists:foldl(fun(Date, Acc) ->
+                        case catch copy_messages_int([FromDBMod, State#state.dbmod, VHost, Date]) of
+                            ok ->
+                                ?INFO_MSG("Copied messages at ~p (~p/~p)", [Date, Acc, DatesLength]);
+                            Value ->
+                                ?ERROR_MSG("Failed to copy messages at ~p (~p/~p): ~p", [Date, Acc, DatesLength, Value]),
+                                throw(error)
+                        end,
+                        Acc + 1
+                      end, 1, Dates),
+    ?INFO_MSG("copy_messages from ~p finished",  [From]),
     FromDBMod:stop(VHost).
 
 copy_messages_int([FromDBMod, ToDBMod, VHost, Date]) ->
@@ -874,10 +852,10 @@ copy_messages_int([FromDBMod, ToDBMod, VHost, Date]) ->
 copy_messages_int_tc([FromDBMod, ToDBMod, VHost, Date]) ->
     ?INFO_MSG("Going to copy messages from ~p for ~p at ~p", [FromDBMod, VHost, Date]),
 
-    ok = FromDBMod:rebuild_stats_at(VHost, binary_to_list(Date)),
+    ok = FromDBMod:rebuild_stats_at(VHost, Date),
     catch mod_logdb:rebuild_stats_at(VHost, Date),
-    {ok, FromStats} = FromDBMod:get_vhost_stats_at(VHost, binary_to_list(Date)),
-    ToStats = case mod_logdb:get_vhost_stats_at(VHost, Date) of
+    {ok, FromStats} = FromDBMod:get_vhost_stats_at(VHost, Date),
+    ToStats = case mod_logdb:get_vhost_stats_at(VHost, iolist_to_binary(Date)) of
                    {ok, Stats} -> Stats;
                    {error, _} -> []
               end,
@@ -888,13 +866,20 @@ copy_messages_int_tc([FromDBMod, ToDBMod, VHost, Date]) ->
     StatsLength = length(FromStats),
 
     CopyFun = if
-                                                   % destination table is empty
-                FromDBMod /= mod_logdb_mnesia_old, ToStats == [] ->
+                % destination table is empty
+                ToStats == [] ->
                     fun({User, _Count}, Acc) ->
-                        {ok, Msgs} = FromDBMod:get_user_messages_at(binary_to_list(User), VHost, binary_to_list(Date)),
+                        {ok, Msgs} = FromDBMod:get_user_messages_at(User, VHost, Date),
                         MAcc =
                           lists:foldl(fun(Msg, MFAcc) ->
-                                          ok = ToDBMod:log_message(VHost, Msg),
+                                          MsgBinary = Msg#msg{owner_name=iolist_to_binary(User),
+                                                              peer_name=iolist_to_binary(Msg#msg.peer_name),
+                                                              peer_server=iolist_to_binary(Msg#msg.peer_server),
+                                                              peer_resource=iolist_to_binary(Msg#msg.peer_resource),
+                                                              type=iolist_to_binary(Msg#msg.type),
+                                                              subject=iolist_to_binary(Msg#msg.subject),
+                                                              body=iolist_to_binary(Msg#msg.body)},
+                                          ok = ToDBMod:log_message(VHost, MsgBinary),
                                           MFAcc + 1
                                       end, 0, Msgs),
                         NewAcc = Acc + 1,
@@ -902,10 +887,10 @@ copy_messages_int_tc([FromDBMod, ToDBMod, VHost, Date]) ->
                         %timer:sleep(100),
                         NewAcc
                     end;
-                                                   % destination table is not empty
-                FromDBMod /= mod_logdb_mnesia_old, ToStats /= [] ->
+                % destination table is not empty
+                true ->
                     fun({User, _Count}, Acc) ->
-                        {ok, ToMsgs} = ToDBMod:get_user_messages_at(binary_to_list(User), VHost, binary_to_list(Date)),
+                        {ok, ToMsgs} = ToDBMod:get_user_messages_at(User, VHost, Date),
                         lists:foreach(fun(#msg{timestamp=Tst}) when length(Tst) == 16 ->
                                             ets:insert(mod_logdb_temp, {Tst});
                                          % mysql, pgsql removes final zeros after decimal point
@@ -914,12 +899,19 @@ copy_messages_int_tc([FromDBMod, ToDBMod, VHost, Date]) ->
                                             [T] = io_lib:format("~.5f", [F]),
                                             ets:insert(mod_logdb_temp, {T})
                                       end, ToMsgs),
-                        {ok, Msgs} = FromDBMod:get_user_messages_at(binary_to_list(User), VHost, binary_to_list(Date)),
+                        {ok, Msgs} = FromDBMod:get_user_messages_at(User, VHost, Date),
                         MAcc =
                           lists:foldl(fun(#msg{timestamp=ToTimestamp} = Msg, MFAcc) ->
                                           case ets:member(mod_logdb_temp, ToTimestamp) of
                                                false ->
-                                                  ok = ToDBMod:log_message(VHost, Msg),
+                                                  MsgBinary = Msg#msg{owner_name=iolist_to_binary(User),
+                                                                      peer_name=iolist_to_binary(Msg#msg.peer_name),
+                                                                      peer_server=iolist_to_binary(Msg#msg.peer_server),
+                                                                      peer_resource=iolist_to_binary(Msg#msg.peer_resource),
+                                                                      type=iolist_to_binary(Msg#msg.type),
+                                                                      subject=iolist_to_binary(Msg#msg.subject),
+                                                                      body=iolist_to_binary(Msg#msg.body)},
+                                                  ok = ToDBMod:log_message(VHost, MsgBinary),
                                                   ets:insert(mod_logdb_temp, {ToTimestamp}),
                                                   MFAcc + 1;
                                                true ->
@@ -931,79 +923,8 @@ copy_messages_int_tc([FromDBMod, ToDBMod, VHost, Date]) ->
                         ?INFO_MSG("Copied ~p messages for ~p (~p/~p) at ~p", [MAcc, User, NewAcc, StatsLength, Date]),
                         %timer:sleep(100),
                         NewAcc
-                    end;
-                % copying from mod_logmnesia
-                true ->
-                    fun({User, _Count}, Acc) ->
-                        ToStats =
-                           case ToDBMod:get_user_messages_at(binary_to_list(User), VHost, binary_to_list(Date)) of
-                                {ok, []} ->
-                                  ok;
-                                {ok, ToMsgs} ->
-                                  lists:foreach(fun(#msg{timestamp=Tst}) when length(Tst) == 16 ->
-                                                     ets:insert(mod_logdb_temp, {Tst});
-                                                   % mysql, pgsql removes final zeros after decimal point
-                                                   (#msg{timestamp=Tst}) when length(Tst) < 15 ->
-                                                     {F, _} = string:to_float(Tst++".0"),
-                                                     [T] = io_lib:format("~.5f", [F]),
-                                                     ets:insert(mod_logdb_temp, {T})
-                                                end, ToMsgs);
-                                {error, _} ->
-                                  ok
-                           end,
-                        {ok, Msgs} = FromDBMod:get_user_messages_at(binary_to_list(User), VHost, binary_to_list(Date)),
-
-                        MAcc =
-                          lists:foldl(
-                            fun({msg, TU, TS, TR, FU, FS, FR, Type, Subj, Body, Timest},
-                                MFAcc) ->
-                                  [Timestamp] = if is_float(Timest) == true ->
-                                                     io_lib:format("~.5f", [Timest]);
-                                                   % early versions of mod_logmnesia
-                                                   is_integer(Timest) == true ->
-                                                     io_lib:format("~.5f", [Timest-719528*86400.0]);
-                                                   true ->
-                                                     ?ERROR_MSG("Incorrect timestamp ~p", [Timest]),
-                                                     throw(error)
-                                                end,
-                                  case ets:member(mod_logdb_temp, Timestamp) of
-                                       false ->
-                                          if
-                                           % from
-                                           TS == VHost ->
-                                             TMsg = #msg{timestamp=Timestamp,
-                                                         owner_name=TU,
-                                                         peer_name=FU, peer_server=FS, peer_resource=FR,
-                                                         direction=from,
-                                                         type=Type,
-                                                         subject=Subj, body=Body},
-                                             ok = ToDBMod:log_message(VHost, TMsg);
-                                           true -> ok
-                                         end,
-                                         if
-                                           % to
-                                           FS == VHost ->
-                                             FMsg = #msg{timestamp=Timestamp,
-                                                         owner_name=FU,
-                                                         peer_name=TU, peer_server=TS, peer_resource=TR,
-                                                         direction=to,
-                                                         type=Type,
-                                                         subject=Subj, body=Body},
-                                             ok = ToDBMod:log_message(VHost, FMsg);
-                                           true -> ok
-                                         end,
-                                         ets:insert(mod_logdb_temp, {Timestamp}),
-                                         MFAcc + 1;
-                                       true -> % not ets:member
-                                          MFAcc
-                                   end % case
-                          end, 0, Msgs), % foldl
-                        NewAcc = Acc + 1,
-                        ?INFO_MSG("Copied ~p messages for ~p (~p/~p) at ~p", [MAcc, User, NewAcc, StatsLength, Date]),
-                        %timer:sleep(100),
-                        NewAcc
-                    end % fun
-              end, % if FromDBMod /= mod_logdb_mnesia_old
+                    end
+              end,
 
     if
       FromStats == [] ->
@@ -1012,7 +933,7 @@ copy_messages_int_tc([FromDBMod, ToDBMod, VHost, Date]) ->
         ?INFO_MSG("Stats are equal at ~p", [Date]);
       FromStatsS /= ToStatsS ->
         lists:foldl(CopyFun, 0, FromStats),
-        ok = ToDBMod:rebuild_stats_at(VHost, binary_to_list(Date))
+        ok = ToDBMod:rebuild_stats_at(VHost, Date)
         %timer:sleep(1000)
     end,
 
