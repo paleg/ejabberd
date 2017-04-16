@@ -24,7 +24,7 @@
          handle_call/3, handle_cast/2, handle_info/2,
          init/1, terminate/2]).
 % hooks
--export([send_packet/1, receive_packet/1, remove_user/2]).
+-export([send_packet/1, receive_packet/1, offline_message/1, remove_user/2]).
 -export([get_local_identity/5,
          get_local_features/5,
          get_local_items/5,
@@ -157,6 +157,8 @@ cleanup(#state{vhost=VHost} = _State) ->
     ejabberd_hooks:delete(remove_user, VHost, ?MODULE, remove_user, 90),
     ejabberd_hooks:delete(user_send_packet, VHost, ?MODULE, send_packet, 90),
     ejabberd_hooks:delete(user_receive_packet, VHost, ?MODULE, receive_packet, 90),
+    ejabberd_hooks:delete(offline_message_hook, VHost, ?MODULE, offline_message, 40),
+
     ejabberd_hooks:delete(adhoc_local_commands, VHost, ?MODULE, adhoc_local_commands, 50),
     ejabberd_hooks:delete(adhoc_local_items, VHost, ?MODULE, adhoc_local_items, 50),
     ejabberd_hooks:delete(disco_local_identity, VHost, ?MODULE, get_local_identity, 50),
@@ -412,12 +414,13 @@ handle_info(start, #state{dbmod=DBMod, vhost=VHost}=State) ->
            ejabberd_hooks:add(remove_user, VHost, ?MODULE, remove_user, 90),
            ejabberd_hooks:add(user_send_packet, VHost, ?MODULE, send_packet, 90),
            ejabberd_hooks:add(user_receive_packet, VHost, ?MODULE, receive_packet, 90),
+           ejabberd_hooks:add(offline_message_hook, VHost, ?MODULE, offline_message, 40),
 
-           ejabberd_hooks:add(disco_local_items, VHost, ?MODULE, get_local_items, 50),
-           ejabberd_hooks:add(disco_local_features, VHost, ?MODULE, get_local_features, 50),
-           ejabberd_hooks:add(disco_local_identity, VHost, ?MODULE, get_local_identity, 50),
-           ejabberd_hooks:add(adhoc_local_items, VHost, ?MODULE, adhoc_local_items, 50),
            ejabberd_hooks:add(adhoc_local_commands, VHost, ?MODULE, adhoc_local_commands, 50),
+           ejabberd_hooks:add(disco_local_items, VHost, ?MODULE, get_local_items, 50),
+           ejabberd_hooks:add(disco_local_identity, VHost, ?MODULE, get_local_identity, 50),
+           ejabberd_hooks:add(disco_local_features, VHost, ?MODULE, get_local_features, 50),
+           ejabberd_hooks:add(adhoc_local_items, VHost, ?MODULE, adhoc_local_items, 50),
 
            ejabberd_hooks:add(webadmin_menu_host, VHost, ?MODULE, webadmin_menu, 70),
            ejabberd_hooks:add(webadmin_user, VHost, ?MODULE, webadmin_user, 50),
@@ -504,6 +507,13 @@ receive_packet({Pkt, #{jid := Owner} = C2SState}) ->
     gen_server:cast(Proc, {addlog, from, Owner, Peer, Pkt}),
     {Pkt, C2SState}.
 
+offline_message({_Action, #message{from = Peer, to = Owner} = Pkt} = Acc) ->
+    VHost = Owner#jid.lserver,
+    %?MYDEBUG("offline_message. Pkt=~p", [Pkt]),
+    Proc = gen_mod:get_module_proc(VHost, ?PROCNAME),
+    gen_server:cast(Proc, {addlog, from, Owner, Peer, Pkt}),
+    Acc.
+
 remove_user(User, Server) ->
     LUser = jid:nodeprep(User),
     LServer = jid:nameprep(Server),
@@ -538,6 +548,10 @@ copy_messages_ctl(VHost, Backend, Date) ->
 % handle_cast({addlog, E}, _)
 % raw packet -> #msg
 packet_parse(_Owner, _Peer, #message{type = error}, _Direction, _State) ->
+    ignore;
+packet_parse(_Owner, _Peer, #message{meta = #{sm_copy := true}}, _Direction, _State) ->
+    ignore;
+packet_parse(_Owner, _Peer, #message{meta = #{from_offline := true}}, _Direction, _State) ->
     ignore;
 packet_parse(Owner, Peer, #message{body = Body, subject = Subject, type = Type}, Direction, State) ->
     %?MYDEBUG("Owner=~p, Peer=~p, Direction=~p", [Owner, Peer, Direction]),
