@@ -32,7 +32,7 @@
          adhoc_local_commands/4
         ]).
 % ejabberdctl
--export([rebuild_stats/3,
+-export([rebuild_stats/1,
          copy_messages/1, copy_messages_ctl/3, copy_messages_int_tc/1]).
 %
 -export([get_vhost_stats/1, get_vhost_stats_at/2,
@@ -62,7 +62,7 @@
 -include("ejabberd.hrl").
 -include("xmpp.hrl").
 -include("mod_roster.hrl").
--include("ejabberd_ctl.hrl").
+-include("ejabberd_commands.hrl").
 -include("adhoc.hrl").
 -include("ejabberd_web_admin.hrl").
 -include("ejabberd_http.hrl").
@@ -170,7 +170,7 @@ cleanup(#state{vhost=VHost} = _State) ->
 
     ?MYDEBUG("Removed hooks for ~p", [VHost]),
 
-    %ejabberd_ctl:unregister_commands(VHost, [{"rebuild_stats", "rebuild mod_logdb module stats for vhost"}], ?MODULE, rebuild_stats),
+    ejabberd_commands:unregister_commands(get_commands_spec()),
     %Supported_backends = lists:flatmap(fun({Backend, _Opts}) ->
     %                                        [atom_to_list(Backend), " "]
     %                                   end, State#state.dbs),
@@ -187,6 +187,13 @@ stop(VHost) ->
     %timer:sleep(10000),
     ok = supervisor:terminate_child(ejabberd_gen_mod_sup, Proc),
     ok = supervisor:delete_child(ejabberd_gen_mod_sup, Proc).
+
+get_commands_spec() ->
+    [#ejabberd_commands{name = rebuild_stats, tags = [logdb],
+            desc = "rebuild mod_logdb stats for vhost",
+            module = ?MODULE, function = rebuild_stats,
+            args = [{host, binary}],
+            result = {res, rescode}}].
 
 mod_opt_type(dbs) ->
     fun (A) when is_list(A) -> A end;
@@ -421,10 +428,7 @@ handle_info(start, #state{dbmod=DBMod, vhost=VHost}=State) ->
 
            ?MYDEBUG("Added hooks for ~p", [VHost]),
 
-           %ejabberd_ctl:register_commands(
-           %                VHost,
-           %                [{"rebuild_stats", "rebuild mod_logdb module stats for vhost"}],
-           %                ?MODULE, rebuild_stats),
+           ejabberd_commands:register_commands(get_commands_spec()),
            %Supported_backends = lists:flatmap(fun({Backend, _Opts}) ->
            %                                       [atom_to_list(Backend), " "]
            %                                   end, State#state.dbs),
@@ -520,21 +524,19 @@ remove_user(User, Server) ->
 % ejabberdctl
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-rebuild_stats(_Val, VHost, ["rebuild_stats"]) ->
+rebuild_stats(VHost) ->
     Proc = gen_mod:get_module_proc(VHost, ?PROCNAME),
     gen_server:cast(Proc, {rebuild_stats}),
-    {stop, ?STATUS_SUCCESS};
-rebuild_stats(Val, _VHost, _Args) ->
-    Val.
+    ok.
 
 copy_messages_ctl(_Val, VHost, ["copy_messages", Backend]) ->
     Proc = gen_mod:get_module_proc(VHost, ?PROCNAME),
     gen_server:cast(Proc, {copy_messages, Backend}),
-    {stop, ?STATUS_SUCCESS};
+    ok;
 copy_messages_ctl(_Val, VHost, ["copy_messages", Backend, Date]) ->
     Proc = gen_mod:get_module_proc(VHost, ?PROCNAME),
     gen_server:cast(Proc, {copy_messages, Backend, Date}),
-    {stop, ?STATUS_SUCCESS};
+    ok;
 copy_messages_ctl(Val, _VHost, _Args) ->
     Val.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

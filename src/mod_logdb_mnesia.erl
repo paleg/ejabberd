@@ -371,9 +371,9 @@ get_dates_int(VHost) ->
                     Table = term_to_binary(ATable),
                     case ejabberd_regexp:run( Table, << VHost/binary, <<"$">>/binary >> ) of
                          match ->
-                            case re:run(Table, "_[0-9]+-[0-9]+-[0-9]+_") of
+                            case re:run(Table, "[0-9]+-[0-9]+-[0-9]+") of
                                  {match, [{S, E}]} ->
-                                     lists:append(Dates, [lists:sublist(binary_to_list(Table), S+2, E-2)]);
+                                     lists:append(Dates, [lists:sublist(binary_to_list(Table), S+1, E)]);
                                  nomatch ->
                                      Dates
                             end;

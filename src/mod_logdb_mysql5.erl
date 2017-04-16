@@ -486,13 +486,13 @@ drop_user(User, VHost) ->
 get_dates_int(DBRef, VHost) ->
     case sql_query_internal(DBRef, ["SHOW TABLES"]) of
          {data, Tables} ->
+            Reg = "^" ++ lists:sublist(prefix(),2,length(prefix())) ++ ".*" ++ escape_vhost(VHost),
             lists:foldl(fun([Table], Dates) ->
-                           Reg = lists:sublist(prefix(),2,length(prefix())) ++ ".*" ++ escape_vhost(VHost),
                            case re:run(Table, Reg) of
-                                {match, [{1, _}]} ->
-                                   case re:run(Table,"[0-9]+-[0-9]+-[0-9]+") of
+                                {match, _} ->
+                                   case re:run(Table, "[0-9]+-[0-9]+-[0-9]+") of
                                         {match, [{S, E}]} ->
-                                            lists:append(Dates, [lists:sublist(Table,S,E)]);
+                                            lists:append(Dates, [lists:sublist(Table, S+1, E)]);
                                         nomatch ->
                                             Dates
                                    end;

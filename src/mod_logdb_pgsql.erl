@@ -499,7 +499,7 @@ get_dates_int(DBRef, VHost) ->
             lists:foldl(fun({_Schema, Table, _Type, _Owner}, Dates) ->
                              case re:run(Table,"[0-9]+-[0-9]+-[0-9]+") of
                                   {match, [{S, E}]} ->
-                                      lists:append(Dates, [lists:sublist(Table,S,E)]);
+                                      lists:append(Dates, [lists:sublist(Table, S+1, E)]);
                                   nomatch ->
                                       Dates
                              end
