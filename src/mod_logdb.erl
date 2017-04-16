@@ -562,21 +562,6 @@ packet_parse(Owner, Peer, #message{body = Body, subject = Subject, type = Type},
             ok;
          groupchat when State#state.groupchat == send, Direction == from ->
             throw(ignore);
-         groupchat when State#state.groupchat == half ->
-            Rooms = ets:match(muc_online_room, '$1'),
-            Ni=lists:foldl(fun([{muc_online_room, {GName, GHost}, Pid}], Names) ->
-                            case gen_fsm:sync_send_all_state_event(Pid, {get_jid_nick, Owner}) of
-                                 [] -> Names;
-                                 Nick ->
-                                    lists:append(Names, [jid:encode({GName, GHost, Nick})])
-                            end
-                           end, [], Rooms),
-            case lists:member(jid:encode(Peer), Ni) of
-                 true when Direction == from ->
-                   throw(ignore);
-                 _ ->
-                   ok
-            end;
          groupchat when State#state.groupchat == none ->
             throw(ignore);
          _ ->
@@ -1432,9 +1417,7 @@ get_settings_form(Host, Lang) ->
                         #xdata_option{label = ?T(Lang, <<"none">>),
                                       value = <<"none">>},
                         #xdata_option{label = ?T(Lang, <<"send">>),
-                                      value = <<"send">>},
-                        #xdata_option{label = ?T(Lang, <<"half">>),
-                                      value = <<"half">>}]},
+                                      value = <<"send">>}]},
           #xdata_field{
              type = 'text-multi',
              label = ?T(Lang, <<"Jids/Domains to ignore">>),
@@ -1548,8 +1531,7 @@ parse_module_settings(XData) ->
     GroupChat = case get_value(<<"groupchat">>, XData) of
                      ValueGroupChat when ValueGroupChat == <<"none">>;
                                          ValueGroupChat == <<"all">>;
-                                         ValueGroupChat == <<"send">>;
-                                         ValueGroupChat == <<"half">> ->
+                                         ValueGroupChat == <<"send">> ->
                          misc:binary_to_atom(ValueGroupChat);
                      _ -> throw(bad_request)
                 end,
