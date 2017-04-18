@@ -3,11 +3,9 @@
 % pgsql:squery(DBRef, "CREATE TABLE test.\"logdb_stats_test\" (owner_id INTEGER, peer_name_id INTEGER, peer_server_id INTEGER, at VARCHAR(20), count integer);" ).
 %%%----------------------------------------------------------------------
 %%% File    : mod_logdb_pgsql.erl
-%%% Author  : Oleg Palij (mailto,xmpp:o.palij@gmail.com)
+%%% Author  : Oleg Palij (mailto:o.palij@gmail.com)
 %%% Purpose : Posgresql backend for mod_logdb
-%%% Version : trunk
-%%% Id      : $Id: mod_logdb_pgsql.erl 1360 2009-07-30 06:00:14Z malik $
-%%% Url     : http://www.dp.uz.gov.ua/o.palij/mod_logdb/
+%%% Url     : https://paleg.github.io/mod_logdb/
 %%%----------------------------------------------------------------------
 
 -module(mod_logdb_pgsql).

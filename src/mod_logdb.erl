@@ -1,10 +1,8 @@
 %%%----------------------------------------------------------------------
 %%% File    : mod_logdb.erl
-%%% Author  : Oleg Palij (mailto,xmpp:o.palij@gmail.com)
+%%% Author  : Oleg Palij (mailto:o.palij@gmail.com)
 %%% Purpose : Frontend for log user messages to db
-%%% Version : trunk
-%%% Id      : $Id: mod_logdb.erl 1360 2009-07-30 06:00:14Z malik $
-%%% Url     : http://www.dp.uz.gov.ua/o.palij/mod_logdb/
+%%% Url     : https://paleg.github.io/mod_logdb/
 %%%----------------------------------------------------------------------
 
 -module(mod_logdb).

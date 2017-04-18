@@ -1,10 +1,8 @@
 %%%----------------------------------------------------------------------
 %%% File    : mod_logdb_mnesia.erl
-%%% Author  : Oleg Palij (mailto,xmpp:o.palij@gmail.com)
+%%% Author  : Oleg Palij (mailto:o.palij@gmail.com)
 %%% Purpose : mnesia backend for mod_logdb
-%%% Version : trunk
-%%% Id      : $Id: mod_logdb_mnesia.erl 1273 2009-02-05 18:12:57Z malik $
-%%% Url     : http://www.dp.uz.gov.ua/o.palij/mod_logdb/
+%%% Url     : https://paleg.github.io/mod_logdb/
 %%%----------------------------------------------------------------------
 
 -module(mod_logdb_mnesia).

@@ -1,10 +1,8 @@
 %%%----------------------------------------------------------------------
 %%% File    : gen_logdb.erl
-%%% Author  : Oleg Palij (mailto,xmpp:o.palij@gmail.com)
+%%% Author  : Oleg Palij (mailto:o.palij@gmail.com)
 %%% Purpose : Describes generic behaviour for mod_logdb backends.
-%%% Version : trunk
-%%% Id      : $Id: gen_logdb.erl 1273 2009-02-05 18:12:57Z malik $
-%%% Url     : http://www.dp.uz.gov.ua/o.palij/mod_logdb/
+%%% Url     : https://paleg.github.io/mod_logdb/
 %%%----------------------------------------------------------------------
 
 -module(gen_logdb).
