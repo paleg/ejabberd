@@ -9,8 +9,6 @@
 -author('o.palij@gmail.com').
 
 -include("mod_logdb.hrl").
--include("ejabberd.hrl").
--include("jlib.hrl").
 -include("logger.hrl").
 
 -behaviour(gen_logdb).

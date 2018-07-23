@@ -57,7 +57,6 @@
          user_messages_stats_at/5]).
 
 -include("mod_logdb.hrl").
--include("ejabberd.hrl").
 -include("xmpp.hrl").
 -include("mod_roster.hrl").
 -include("ejabberd_commands.hrl").
