@@ -390,3 +390,33 @@
 {"Your Jabber account was successfully created.","Ваш Jabber-акаунт було успішно створено."}.
 {"Your Jabber account was successfully deleted.","Ваш Jabber-акаунт було успішно видалено."}.
 {"Your messages to ~s are being blocked. To unblock them, visit ~s","Ваші повідомлення до ~s блокуються. Для розблокування відвідайте ~s"}.
+% mod_logdb
+{"Users Messages", "Повідомлення користувачів"}.
+{"Date", "Дата"}.
+{"Count", "Кількість"}.
+{"Logged messages for ~s", "Збережені повідомлення для ~s"}.
+{"Logged messages for ~s at ~s", "Збережені повідомлення для ~s за ~s"}.
+{" at ", " за "}.
+{"No logged messages for ~s", "Відсутні повідомлення для ~s"}.
+{"No logged messages for ~s at ~s", "Відсутні повідомлення для ~s за ~s"}.
+{"Date, Time", "Дата, Час"}.
+{"Direction: Jid", "Напрямок: Jid"}.
+{"Subject", "Тема"}.
+{"Body", "Текст"}.
+{"Messages", "Повідомлення"}.
+{"Filter Selected", "Відфільтрувати виділені"}.
+{"Do Not Log Messages", "Не зберігати повідомлення"}.
+{"Log Messages", "Зберігати повідомлення"}.
+{"Messages logging engine", "Система збереження повідомлень"}.
+{"Default", "За замовчуванням"}.
+{"Set logging preferences", "Вкажіть налагоджування збереження повідомлень"}.
+{"Messages logging engine users", "Користувачі системи збереження повідомлень"}.
+{"Messages logging engine settings", "Налагоджування системи збереження повідомлень"}.
+{"Set run-time settings", "Вкажіть поточні налагоджування"}.
+{"Groupchat messages logging", "Збереження повідомлень типу groupchat"}.
+{"Jids/Domains to ignore", "Ігнорувати наступні jids/домени"}.
+{"Purge messages older than (days)", "Видаляти повідомлення старіші ніж (дні)"}.
+{"Poll users settings (seconds)", "Оновлювати налагоджування користувачів кожні (секунд)"}.
+{"Drop", "Видаляти"}.
+{"Do not drop", "Не видаляти"}.
+{"Drop messages on user removal", "Видаляти повідомлення під час видалення користувача"}.
