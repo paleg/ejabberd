@@ -220,24 +220,35 @@ get_commands_spec() ->
             result = {res, rescode}}].
 
 mod_opt_type(dbs) ->
-    fun (A) when is_list(A) -> A end;
+    econf:map(
+        econf:enum([mnesia, mysql, mysql5, pgsql]),
+        econf:map(
+            econf:enum([user, password, server, port, db, schema]),
+            econf:string()
+        )
+    );
 mod_opt_type(vhosts) ->
-    fun (A) when is_list(A) -> A end;
+    econf:map(
+        econf:string(),
+        econf:enum([mnesia, mysql, mysql5, pgsql])
+    );
 mod_opt_type(poll_users_settings) ->
-    fun (I) when is_integer(I) -> I end;
+    econf:non_neg_int();
 mod_opt_type(groupchat) ->
-    fun (all) -> all;
-        (send) -> send;
-        (none) -> none
-    end;
+    econf:enum([all, send, none]);
 mod_opt_type(dolog_default) ->
-    fun (B) when is_boolean(B) -> B end;
+    econf:bool();
+mod_opt_type(drop_messages_on_user_removal) ->
+    econf:bool();
 mod_opt_type(ignore_jids) ->
-    fun (A) when is_list(A) -> A end;
+    econf:list(econf:string());
 mod_opt_type(purge_older_days) ->
-    fun (I) when is_integer(I) -> I end;
+    econf:either(
+        never,
+        econf:non_neg_int()
+    );
 mod_opt_type(_) ->
-    [dbs, vhosts, poll_users_settings, groupchat, dolog_default, ignore_jids, purge_older_days].
+    [dbs, vhosts, poll_users_settings, groupchat, dolog_default, drop_messages_on_user_removal, ignore_jids, purge_older_days].
 
 handle_call({cleanup}, _From, State) ->
     cleanup(State),
