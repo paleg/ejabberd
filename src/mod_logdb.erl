@@ -26,6 +26,7 @@
 -export([get_local_identity/5,
          get_local_features/5,
          get_local_items/5,
+         mod_options/1,
          adhoc_local_items/4,
          adhoc_local_commands/4
         ]).
@@ -56,6 +57,8 @@
          user_messages_stats/4,
          user_messages_stats_at/5]).
 
+-export([get_opt/3]).
+
 -include("mod_logdb.hrl").
 -include("xmpp.hrl").
 -include("mod_roster.hrl").
@@ -64,6 +67,7 @@
 -include("ejabberd_web_admin.hrl").
 -include("ejabberd_http.hrl").
 -include("logger.hrl").
+-include("translate.hrl").
 
 -define(PROCNAME, ejabberd_mod_logdb).
 % gen_server call timeout
@@ -72,6 +76,28 @@
 -record(state, {vhost, dbmod, backendPid, monref, purgeRef, pollRef, dbopts, dbs, dolog_default, ignore_jids, groupchat, purge_older_days, poll_users_settings, drop_messages_on_user_removal}).
 
 ets_settings_table(VHost) -> list_to_atom("ets_logdb_settings_" ++ binary_to_list(VHost)).
+
+-spec tr(binary(), binary()) -> binary().
+tr(Lang, Text) ->
+    translate:translate(Lang, Text).
+
+mod_options(VHost) ->
+    [
+     {dbs, [{mnesia, []}]},
+     {vhosts, [{VHost, mnesia}]},
+     {ignore_jids, []},
+     {groupchat, none},
+     {drop_messages_on_user_removal, true},
+     {purge_older_days, never},
+     {dolog_default, true},
+     {poll_users_settings, 5}
+    ].
+
+get_opt(Opt, Opts, Default) ->
+   case lists:keyfind(Opt, 1, Opts) of
+      false -> Default;
+      {_, Result} -> Result
+   end.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
@@ -88,7 +114,8 @@ start(VHost, Opts) ->
          worker,
          [?MODULE]},
     % add child to ejabberd_sup
-    supervisor:start_child(ejabberd_gen_mod_sup, ChildSpec).
+    supervisor:start_child(ejabberd_gen_mod_sup, ChildSpec),
+    ok.
 
 depends(_Host, _Opts) ->
     [].
@@ -106,14 +133,14 @@ start_link(VHost, Opts) ->
 
 init([VHost, Opts]) ->
     process_flag(trap_exit, true),
-    DBsRaw = gen_mod:get_opt(dbs, Opts, fun(A) -> A end, [{mnesia, []}]),
+    DBsRaw = gen_mod:get_opt(dbs, Opts),
     DBs = case lists:keysearch(mnesia, 1, DBsRaw) of
                false -> lists:append(DBsRaw, [{mnesia,[]}]);
                {value, _} -> DBsRaw
           end,
-    VHostDB = gen_mod:get_opt(vhosts, Opts, fun(A) -> A end, [{VHost, mnesia}]),
+    VHostDB = gen_mod:get_opt(vhosts, Opts),
     % 10 is default because of using in clustered environment
-    PollUsersSettings = gen_mod:get_opt(poll_users_settings, Opts, fun(A) -> A end, 10),
+    PollUsersSettings = gen_mod:get_opt(poll_users_settings, Opts),
 
     {DBName, DBOpts} =
          case lists:keysearch(VHost, 1, VHostDB) of
@@ -139,11 +166,11 @@ init([VHost, Opts]) ->
                 dbopts=DBOpts,
                 % dbs used for convert messages from one backend to other
                 dbs=DBs,
-                dolog_default=gen_mod:get_opt(dolog_default, Opts, fun(A) -> A end, true),
-                drop_messages_on_user_removal=gen_mod:get_opt(drop_messages_on_user_removal, Opts, fun(A) -> A end, true),
-                ignore_jids=gen_mod:get_opt(ignore_jids, Opts, fun(A) -> A end, []),
-                groupchat=gen_mod:get_opt(groupchat, Opts, fun(A) -> A end, none),
-                purge_older_days=gen_mod:get_opt(purge_older_days, Opts, fun(A) -> A end, never),
+                dolog_default=gen_mod:get_opt(dolog_default, Opts),
+                drop_messages_on_user_removal=gen_mod:get_opt(drop_messages_on_user_removal, Opts),
+                ignore_jids=gen_mod:get_opt(ignore_jids, Opts),
+                groupchat=gen_mod:get_opt(groupchat, Opts),
+                purge_older_days=gen_mod:get_opt(purge_older_days, Opts),
                 poll_users_settings=PollUsersSettings}}.
 
 cleanup(#state{vhost=VHost} = _State) ->
@@ -444,7 +471,7 @@ handle_info(scheduled_purging, #state{vhost=VHost, purge_older_days=Days} = Stat
 % from timer:send_interval/2 (in start handle_info)
 handle_info(poll_users_settings, #state{dbmod=DBMod, vhost=VHost}=State) ->
     {ok, DoLog} = DBMod:get_users_settings(VHost),
-    ?MYDEBUG("DoLog=~p", [DoLog]),
+%    ?MYDEBUG("DoLog=~p", [DoLog]),
     true = ets:delete_all_objects(ets_settings_table(VHost)),
     ets:insert(ets_settings_table(VHost), DoLog),
     {noreply, State};
@@ -654,8 +681,7 @@ sort_stats(Stats) ->
 % return float seconds elapsed from "zero hour" as list
 get_timestamp() ->
     {MegaSec, Sec, MicroSec} = now(),
-    [List] = io_lib:format("~.5f", [MegaSec*1000000 + Sec + MicroSec/1000000]),
-    List.
+    io_lib:format("~.5f", [MegaSec*1000000 + Sec + MicroSec/1000000]).
 
 % convert float seconds elapsed from "zero hour" to local time "%Y-%m-%d %H:%M:%S" string
 convert_timestamp(Seconds) when is_list(Seconds) ->
@@ -907,7 +933,7 @@ copy_messages_int_tc([FromDBMod, ToDBMod, VHost, Date]) ->
                                          % mysql, pgsql removes final zeros after decimal point
                                          (#msg{timestamp=Tst}) when length(Tst) < 16 ->
                                             {F, _} = string:to_float(Tst++".0"),
-                                            [T] = io_lib:format("~.5f", [F]),
+                                            T = io_lib:format("~.5f", [F]),
                                             ets:insert(mod_logdb_temp, {T})
                                       end, ToMsgs),
                         {ok, Msgs} = FromDBMod:get_user_messages_at(User, VHost, Date),
@@ -992,16 +1018,25 @@ string_to_list(String) ->
 % ad-hoc (copy/pasted from mod_configure.erl)
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+-spec get_permission_level(jid()) -> global | vhost.
+get_permission_level(JID) ->
+    case acl:match_rule(global, configure, JID) of
+      allow -> global;
+      deny -> vhost
+    end.
+
 -define(ITEMS_RESULT(Allow, LNode, Fallback),
-    case Allow of
-        deny -> Fallback;
-        allow ->
-            case get_local_items(LServer, LNode,
-                                 jid:encode(To), Lang) of
-                {result, Res} -> {result, Res};
-                {error, Error} -> {error, Error}
-            end
-    end).
+	case Allow of
+	  deny -> Fallback;
+	  allow ->
+	      PermLev = get_permission_level(From),
+	      case get_local_items({PermLev, LServer}, LNode,
+				   jid:encode(To), Lang)
+		  of
+		{result, Res} -> {result, Res};
+		{error, Error} -> {error, Error}
+	      end
+	end).
 
 get_local_items(Acc, From, #jid{lserver = LServer} = To,
                 <<"">>, Lang) ->
@@ -1051,15 +1086,13 @@ get_local_items(Acc, From, #jid{lserver = LServer} = To,
             end
     end.
 
--define(T(Lang, Text), translate:translate(Lang, Text)).
-
 -define(NODE(Name, Node),
-    #disco_item{jid = jid:make(Server),
-            node = Node,
-            name = ?T(Lang, Name)}).
+	#disco_item{jid = jid:make(Server),
+		    node = Node,
+		    name = tr(Lang, Name)}).
 
 -define(NS_ADMINX(Sub),
-    <<(?NS_ADMIN)/binary, "#", Sub/binary>>).
+	<<(?NS_ADMIN)/binary, "#", Sub/binary>>).
 
 tokenize(Node) -> str:tokens(Node, <<"/#">>).
 
@@ -1098,10 +1131,10 @@ get_local_items(_Host, Item, _Server, _Lang) ->
     {error, xmpp:err_item_not_found()}.
 
 -define(INFO_RESULT(Allow, Feats, Lang),
-    case Allow of
-      deny -> {error, xmpp:err_forbidden(<<"Denied by ACL">>, Lang)};
-      allow -> {result, Feats}
-    end).
+	case Allow of
+	  deny -> {error, xmpp:err_forbidden(?T("Access denied by service policy"), Lang)};
+	  allow -> {result, Feats}
+	end).
 
 get_local_features(Acc, From,
                    #jid{lserver = LServer} = _To, Node, Lang) ->
@@ -1133,11 +1166,11 @@ get_local_features(Acc, From,
     end.
 
 -define(INFO_IDENTITY(Category, Type, Name, Lang),
-    [#identity{category = Category, type = Type, name = ?T(Lang, Name)}]).
+	[#identity{category = Category, type = Type, name = tr(Lang, Name)}]).
 
 -define(INFO_COMMAND(Name, Lang),
-    ?INFO_IDENTITY(<<"automation">>, <<"command-node">>,
-               Name, Lang)).
+	?INFO_IDENTITY(<<"automation">>, <<"command-node">>,
+		       Name, Lang)).
 
 get_local_identity(Acc, _From, _To, Node, Lang) ->
     LNode = tokenize(Node),
@@ -1198,10 +1231,8 @@ recursively_get_local_items(LServer,
 
 -define(COMMANDS_RESULT(Allow, From, To, Request),
     case Allow of
-        deny ->
-            {error, xmpp:err_forbidden(<<"Denied by ACL">>, Lang)};
-        allow ->
-            adhoc_local_commands(From, To, Request)
+        deny -> {error, xmpp:err_forbidden(?T("Access denied by service policy"), Lang)};
+        allow -> adhoc_local_commands(From, To, Request)
     end).
 
 adhoc_local_commands(Acc, From, #jid{lserver = LServer} = To,
@@ -1278,28 +1309,28 @@ get_user_form(LUser, LServer, Lang) ->
     Fs = [
           #xdata_field{
              type = 'list-single',
-             label = ?T(Lang, <<"Default">>),
+             label = tr(Lang, ?T("Default")),
              var = <<"dolog_default">>,
              values = [misc:atom_to_binary(DLD)],
-             options = [#xdata_option{label = ?T(Lang, <<"Log Messages">>),
+             options = [#xdata_option{label = tr(Lang, ?T("Log Messages")),
                                       value = <<"true">>},
-                        #xdata_option{label = ?T(Lang, <<"Do Not Log Messages">>),
+                        #xdata_option{label = tr(Lang, ?T("Do Not Log Messages")),
                                       value = <<"false">>}]},
           #xdata_field{
              type = 'text-multi',
-             label = ?T(Lang, <<"Log Messages">>),
+             label = tr(Lang, ?T("Log Messages")),
              var = <<"dolog_list">>,
              values = DLL},
           #xdata_field{
              type = 'text-multi',
-             label = ?T(Lang, <<"Do Not Log Messages">>),
+             label = tr(Lang, ?T("Do Not Log Messages")),
              var = <<"donotlog_list">>,
              values = DNLL}
          ],
     {result, #xdata{
-                title = ?T(Lang, <<"Messages logging engine settings">>),
+                title = tr(Lang, ?T("Messages logging engine settings")),
                 type = form,
-                instructions = [<< (?T(Lang, <<"Set logging preferences">>))/binary,
+                instructions = [<< (tr(Lang, ?T("Set logging preferences")))/binary,
                                                (iolist_to_binary(": "))/binary,
                                                LUser/binary, "@", LServer/binary >>],
                 fields = [?HFIELD()|
@@ -1325,52 +1356,52 @@ get_settings_form(Host, Lang) ->
     Fs = [
           #xdata_field{
              type = 'list-single',
-             label = ?T(Lang, <<"Default">>),
+             label = tr(Lang, ?T("Default")),
              var = <<"dolog_default">>,
              values = [misc:atom_to_binary(DLD)],
-             options = [#xdata_option{label = ?T(Lang, <<"Log Messages">>),
+             options = [#xdata_option{label = tr(Lang, ?T("Log Messages")),
                                       value = <<"true">>},
-                        #xdata_option{label = ?T(Lang, <<"Do Not Log Messages">>),
+                        #xdata_option{label = tr(Lang, ?T("Do Not Log Messages")),
                                       value = <<"false">>}]},
           #xdata_field{
              type = 'list-single',
-             label = ?T(Lang, <<"Drop messages on user removal">>),
+             label = tr(Lang, ?T("Drop messages on user removal")),
              var = <<"drop_messages_on_user_removal">>,
              values = [misc:atom_to_binary(MRemoval)],
-             options = [#xdata_option{label = ?T(Lang, <<"Drop">>),
+             options = [#xdata_option{label = tr(Lang, ?T("Drop")),
                                       value = <<"true">>},
-                        #xdata_option{label = ?T(Lang, <<"Do not drop">>),
+                        #xdata_option{label = tr(Lang, ?T("Do not drop")),
                                       value = <<"false">>}]},
           #xdata_field{
              type = 'list-single',
-             label = ?T(Lang, <<"Groupchat messages logging">>),
+             label = tr(Lang, ?T("Groupchat messages logging")),
              var = <<"groupchat">>,
              values = [misc:atom_to_binary(GroupChat)],
-             options = [#xdata_option{label = ?T(Lang, <<"all">>),
+             options = [#xdata_option{label = tr(Lang, ?T("all")),
                                       value = <<"all">>},
-                        #xdata_option{label = ?T(Lang, <<"none">>),
+                        #xdata_option{label = tr(Lang, ?T("none")),
                                       value = <<"none">>},
-                        #xdata_option{label = ?T(Lang, <<"send">>),
+                        #xdata_option{label = tr(Lang, ?T("send")),
                                       value = <<"send">>}]},
           #xdata_field{
              type = 'text-multi',
-             label = ?T(Lang, <<"Jids/Domains to ignore">>),
+             label = tr(Lang, ?T("Jids/Domains to ignore")),
              var = <<"ignore_list">>,
              values = IgnoreJids},
           #xdata_field{
              type = 'text-single',
-             label = ?T(Lang, <<"Purge messages older than (days)">>),
+             label = tr(Lang, ?T("Purge messages older than (days)")),
              var = <<"purge_older_days">>,
              values = [iolist_to_binary(PurgeDays)]},
           #xdata_field{
              type = 'text-single',
-             label = ?T(Lang, <<"Poll users settings (seconds)">>),
+             label = tr(Lang, ?T("Poll users settings (seconds)")),
              var = <<"poll_users_settings">>,
              values = [integer_to_binary(PollTime)]}
          ],
     {result, #xdata{
-                title = ?T(Lang, <<"Messages logging engine settings (run-time)">>),
-                instructions = [?T(Lang, <<"Set run-time settings">>)],
+                title = tr(Lang, ?T("Messages logging engine settings (run-time)")),
+                instructions = [tr(Lang, ?T("Set run-time settings"))],
                 type = form,
                 fields = [?HFIELD()|
                           Fs]}}.
@@ -1578,7 +1609,7 @@ get_all_vh_users(Host, Server) ->
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 webadmin_menu(Acc, _Host, Lang) ->
-    [{<<"messages">>, ?T(<<"Users Messages">>)} | Acc].
+    [{<<"messages">>, tr(Lang, ?T("Users Messages"))} | Acc].
 
 webadmin_user(Acc, User, Server, Lang) ->
     Sett = get_user_settings(User, Server),
@@ -1649,12 +1680,12 @@ vhost_messages_stats(Server, Query, Lang) ->
     case Value of
          {'EXIT', CReason} ->
               ?ERROR_MSG("Failed to get_vhost_stats: ~p", [CReason]),
-              [?XC(<<"h1">>, ?T(<<"Error occupied while fetching list">>))];
+              [?XC(<<"h1">>, tr(Lang, ?T("Error occupied while fetching list")))];
          {error, GReason} ->
               ?ERROR_MSG("Failed to get_vhost_stats: ~p", [GReason]),
-              [?XC(<<"h1">>, ?T(<<"Error occupied while fetching list">>))];
+              [?XC(<<"h1">>, tr(Lang, ?T("Error occupied while fetching list")))];
          {ok, []} ->
-              [?XC(<<"h1">>, list_to_binary(io_lib:format(?T(<<"No logged messages for ~s">>), [Server])))];
+              [?XC(<<"h1">>, list_to_binary(io_lib:format(tr(Lang, ?T("No logged messages for ~s")), [Server])))];
          {ok, Dates} ->
               Fun = fun({Date, Count}) ->
                          DateBin = iolist_to_binary(Date),
@@ -1667,7 +1698,7 @@ vhost_messages_stats(Server, Query, Lang) ->
                           ])
                     end,
 
-              [?XC(<<"h1">>, list_to_binary(io_lib:format(?T(<<"Logged messages for ~s">>), [Server])))] ++
+              [?XC(<<"h1">>, list_to_binary(io_lib:format(tr(Lang, ?T("Logged messages for ~s")), [Server])))] ++
                case Res of
                     ok -> [?CT(<<"Submitted">>), ?P];
                     error -> [?CT(<<"Bad format">>), ?P];
@@ -1696,12 +1727,12 @@ vhost_messages_stats_at(Server, Query, Lang, Date) ->
    case Value of
         {'EXIT', CReason} ->
              ?ERROR_MSG("Failed to get_vhost_stats_at: ~p", [CReason]),
-             [?XC(<<"h1">>, ?T(<<"Error occupied while fetching list">>))];
+             [?XC(<<"h1">>, tr(Lang, ?T("Error occupied while fetching list")))];
         {error, GReason} ->
              ?ERROR_MSG("Failed to get_vhost_stats_at: ~p", [GReason]),
-             [?XC(<<"h1">>, ?T(<<"Error occupied while fetching list">>))];
+             [?XC(<<"h1">>, tr(Lang, ?T("Error occupied while fetching list")))];
         {ok, []} ->
-             [?XC(<<"h1">>, list_to_binary(io_lib:format(?T(<<"No logged messages for ~s at ~s">>), [Server, Date])))];
+             [?XC(<<"h1">>, list_to_binary(io_lib:format(tr(Lang, ?T("No logged messages for ~s at ~s")), [Server, Date])))];
         {ok, Stats} ->
              Res = case catch vhost_messages_at_parse_query(Server, Date, Stats, Query) of
                         {'EXIT', Reason} ->
@@ -1719,7 +1750,7 @@ vhost_messages_stats_at(Server, Query, Lang, Date) ->
                            ?XC(<<"td">>, integer_to_binary(Count))
                           ])
                    end,
-             [?XC(<<"h1">>, list_to_binary(io_lib:format(?T(<<"Logged messages for ~s at ~s">>), [Server, Date])))] ++
+             [?XC(<<"h1">>, list_to_binary(io_lib:format(tr(Lang, ?T("Logged messages for ~s at ~s")), [Server, Date])))] ++
               case Res of
                     ok -> [?CT(<<"Submitted">>), ?P];
                     error -> [?CT(<<"Bad format">>), ?P];
@@ -1757,12 +1788,12 @@ user_messages_stats(User, Server, Query, Lang) ->
    case Value of
         {'EXIT', CReason} ->
             ?ERROR_MSG("Failed to get_user_stats: ~p", [CReason]),
-            [?XC(<<"h1">>, ?T(<<"Error occupied while fetching days">>))];
+            [?XC(<<"h1">>, tr(Lang, ?T("Error occupied while fetching days")))];
         {error, GReason} ->
             ?ERROR_MSG("Failed to get_user_stats: ~p", [GReason]),
-            [?XC(<<"h1">>, ?T(<<"Error occupied while fetching days">>))];
+            [?XC(<<"h1">>, tr(Lang,?T("Error occupied while fetching days")))];
         {ok, []} ->
-            [?XC(<<"h1">>, list_to_binary(io_lib:format(?T(<<"No logged messages for ~s">>), [Jid])))];
+            [?XC(<<"h1">>, list_to_binary(io_lib:format(tr(Lang, ?T("No logged messages for ~s")), [Jid])))];
         {ok, Dates} ->
             Fun = fun({Date, Count}) ->
                       DateBin = iolist_to_binary(Date),
@@ -1814,12 +1845,12 @@ user_messages_stats_at(User, Server, Query, Lang, Date) ->
    case Value of
         {'EXIT', CReason} ->
            ?ERROR_MSG("Failed to get_user_messages_at: ~p", [CReason]),
-           [?XC(<<"h1">>, ?T(<<"Error occupied while fetching messages">>))];
+           [?XC(<<"h1">>, tr(Lang, ?T("Error occupied while fetching messages")))];
         {error, GReason} ->
            ?ERROR_MSG("Failed to get_user_messages_at: ~p", [GReason]),
-           [?XC(<<"h1">>, ?T(<<"Error occupied while fetching messages">>))];
+           [?XC(<<"h1">>, tr(Lang, ?T("Error occupied while fetching messages")))];
         {ok, []} ->
-           [?XC(<<"h1">>, list_to_binary(io_lib:format(?T(<<"No logged messages for ~s at ~s">>), [Jid, Date])))];
+           [?XC(<<"h1">>, list_to_binary(io_lib:format(tr(Lang, ?T("No logged messages for ~s at ~s")), [Jid, Date])))];
         {ok, User_messages} ->
            Res =  case catch user_messages_at_parse_query(Server,
                                                           Date,
@@ -1888,7 +1919,7 @@ user_messages_stats_at(User, Server, Query, Lang, Date) ->
                                body=Body}) ->
                       Text = case Subject of
                                   "" -> iolist_to_binary(Body);
-                                  _ -> iolist_to_binary([binary_to_list(?T(<<"Subject">>)) ++ ": " ++ Subject ++ "\n" ++ Body])
+                                  _ -> iolist_to_binary([binary_to_list(tr(Lang, ?T("Subject"))) ++ ": " ++ Subject ++ "\n" ++ Body])
                              end,
                       Resource = case PRes of
                                       [] -> [];
@@ -1915,7 +1946,7 @@ user_messages_stats_at(User, Server, Query, Lang, Date) ->
            % Filtered user messages in html
            Msgs = lists:map(Msgs_Fun, lists:sort(User_messages_filtered)),
 
-           [?XC(<<"h1">>, list_to_binary(io_lib:format(?T(<<"Logged messages for ~s at ~s">>), [Jid, Date])))] ++
+           [?XC(<<"h1">>, list_to_binary(io_lib:format(tr(Lang, ?T("Logged messages for ~s at ~s")), [Jid, Date])))] ++
             case Res of
                  ok -> [?CT(<<"Submitted">>), ?P];
                  error -> [?CT(<<"Bad format">>), ?P];
