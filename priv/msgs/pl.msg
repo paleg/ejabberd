@@ -3,6 +3,33 @@
 %% To improve translations please read:
 %%   https://docs.ejabberd.im/developer/extending-ejabberd/localization/
 
+% mod_logdb
+{"Users Messages", "Wiadomości użytkownika"}.
+{"Date", "Data"}.
+{"Count", "Liczba"}.
+{"Logged messages for ~s", "Zapisane wiadomości dla ~s"}.
+{"Logged messages for ~s at", "Zapisane wiadomości dla ~s o ~s"}.
+{" at ", " o "}.
+{"No logged messages for ~s", "Brak zapisanych wiadomości dla ~s"}.
+{"No logged messages for ~s at ~s", "Brak zapisanych wiadomości dla ~s o ~s"}.
+{"Date, Time", "Data, Godzina"}.
+{"Direction: Jid", "Kierunek: Jid"}.
+{"Subject", "Temat"}.
+{"Body", "Treść"}.
+{"Messages","Wiadomości"}.
+{"Filter Selected", "Odfiltruj zaznaczone"}.
+{"Do Not Log Messages", "Nie zapisuj wiadomości"}.
+{"Log Messages", "Zapisuj wiadomości"}.
+{"Messages logging engine", "System zapisywania historii rozmów"}.
+{"Default", "Domyślne"}.
+{"Set logging preferences", "Ustaw preferencje zapisywania"}.
+{"Messages logging engine settings", "Ustawienia systemu logowania"}.
+{"Set run-time settings", "Zapisz ustawienia systemu logowania"}.
+{"Groupchat messages logging", "Zapisywanie rozmów z konferencji"}.
+{"Jids/Domains to ignore", "JID/Domena która ma być ignorowana"}.
+{"Purge messages older than (days)", "Usuń wiadomości starsze niż (w dniach)"}.
+{"Poll users settings (seconds)", "Czas aktualizacji preferencji użytkowników (sekundy)"}.
+
 {" has set the subject to: "," zmienił temat na: "}.
 {"A friendly name for the node","Przyjazna nazwa węzła"}.
 {"A password is required to enter this room","Aby wejść do pokoju wymagane jest hasło"}.

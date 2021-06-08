@@ -3,6 +3,37 @@
 %% To improve translations please read:
 %%   https://docs.ejabberd.im/developer/extending-ejabberd/localization/
 
+% mod_logdb.erl
+{"Users Messages", "Сообщения пользователей"}.
+{"Date", "Дата"}.
+{"Count", "Количество"}.
+{"Logged messages for ~s", "Сохранённые cообщения для ~s"}.
+{"Logged messages for ~s at ~s", "Сохранённые cообщения для ~s за ~s"}.
+{" at ", " за "}.
+{"No logged messages for ~s", "Отсутствуют сообщения для ~s"}.
+{"No logged messages for ~s at ~s", "Отсутствуют сообщения для ~s за ~s"}.
+{"Date, Time", "Дата, Время"}.
+{"Direction: Jid", "Направление: Jid"}.
+{"Subject", "Тема"}.
+{"Body", "Текст"}.
+{"Messages", "Сообщения"}.
+{"Filter Selected", "Отфильтровать выделенные"}.
+{"Do Not Log Messages", "Не сохранять сообщения"}.
+{"Log Messages", "Сохранять сообщения"}.
+{"Messages logging engine", "Система логирования сообщений"}.
+{"Default", "По умолчанию"}.
+{"Set logging preferences", "Задайте настройки логирования"}.
+{"Messages logging engine users", "Пользователи системы логирования сообщений"}.
+{"Messages logging engine settings", "Настройки системы логирования сообщений"}.
+{"Set run-time settings", "Задайте текущие настройки"}.
+{"Groupchat messages logging", "Логирование сообщений типа groupchat"}.
+{"Jids/Domains to ignore", "Игнорировать следующие jids/домены"}.
+{"Purge messages older than (days)", "Удалять сообщения старее чем (дни)"}.
+{"Poll users settings (seconds)", "Обновлять настройки пользователей через (секунд)"}.
+{"Drop", "Удалять"}.
+{"Do not drop", "Не удалять"}.
+{"Drop messages on user removal", "Удалять сообщения при удалении пользователя"}.
+
 {" (Add * to the end of field to match substring)"," (Добавьте * в конец поля для поиска подстроки)"}.
 {" has set the subject to: "," установил(а) тему: "}.
 {"A friendly name for the node","Легко запоминаемое имя для узла"}.

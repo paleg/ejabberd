@@ -3,6 +3,21 @@
 %% To improve translations please read:
 %%   https://docs.ejabberd.im/developer/extending-ejabberd/localization/
 
+% mod_logdb
+{"Users Messages", "Gebruikersberichten"}.
+{"Date", "Datum"}.
+{"Count", "Aantal"}.
+{"Logged messages for ~s", "Gelogde berichten van ~s"}.
+{"Logged messages for ~s at ~s", "Gelogde berichten van ~s op ~s"}.
+{" at ", " op "}.
+{"No logged messages for ~s", "Geen gelogde berichten van ~s"}.
+{"No logged messages for ~s at ~s", "Geen gelogde berichten van ~s op ~s"}.
+{"Date, Time", "Datum en tijd"}.
+{"Direction: Jid", "Richting: Jabber ID"}.
+{"Subject", "Onderwerp"}.
+{"Body", "Berichtveld"}.
+{"Messages", "Berichten"}.
+
 {" has set the subject to: "," veranderde het onderwerp in: "}.
 {"A friendly name for the node","Bijnaam voor deze knoop"}.
 {"A password is required to enter this room","U hebt een wachtwoord nodig om deze chatruimte te kunnen betreden"}.
