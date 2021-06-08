@@ -1732,7 +1732,7 @@ vhost_messages_stats_at(Server, Query, Lang, Date) ->
                          ?XE(<<"tr">>,
                           [?XAE(<<"td">>, [{<<"class">>, <<"valign">>}],
                             [?INPUT(<<"checkbox">>, <<"selected">>, ID)]),
-                           ?XE(<<"td">>, [?AC(<< <<"../user/">>/binary, UserBin/binary, <<"/messages/">>/binary, Date/binary >>, UserBin)]),
+                           ?XE(<<"td">>, [?AC(<< <<"../../user/">>/binary, UserBin/binary, <<"/messages/">>/binary, Date/binary >>, UserBin)]),
                            ?XC(<<"td">>, integer_to_binary(Count))
                           ])
                    end,
