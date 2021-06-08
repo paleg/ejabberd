@@ -365,7 +365,7 @@ get_dates_int(VHost) ->
     Tables = mnesia:system_info(tables),
     lists:foldl(fun(ATable, Dates) ->
                     Table = term_to_binary(ATable),
-                    case ejabberd_regexp:run( Table, << VHost/binary, <<"$">>/binary >> ) of
+                    case re:run( Table, << VHost/binary, <<"$">>/binary >>, [{capture, none}] ) of
                          match ->
                             case re:run(Table, "[0-9]+-[0-9]+-[0-9]+") of
                                  {match, [{S, E}]} ->

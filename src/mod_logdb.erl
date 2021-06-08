@@ -804,7 +804,7 @@ vhost_messages_parse_query(VHost, Query) ->
                   true ->
                     error;
                   false ->
-                    nothing
+                    ok
              end;
          false ->
              nothing
@@ -1671,6 +1671,11 @@ vhost_messages_stats(Server, Query, Lang) ->
               ?ERROR_MSG("Failed to get_vhost_stats: ~p", [GReason]),
               [?XC(<<"h1">>, ?T(Lang, <<"Error occupied while fetching list">>))];
          {ok, []} ->
+              case Res of
+                   ok -> [?CT(<<"Submitted">>), ?P];
+                   error -> [?CT(<<"Bad format">>), ?P];
+                   nothing -> []
+              end ++
               [?XC(<<"h1">>, list_to_binary(io_lib:format(?T(Lang, <<"No logged messages for ~s">>), [Server])))];
          {ok, Dates} ->
               Fun = fun({Date, Count}) ->
