@@ -16,7 +16,8 @@
 % gen_mod
 -export([start/2, stop/1,
          mod_opt_type/1,
-         depends/2, reload/3]).
+         depends/2, reload/3,
+         mod_doc/0, mod_options/1]).
 % gen_server
 -export([code_change/3,
          handle_call/3, handle_cast/2, handle_info/2,
@@ -106,14 +107,14 @@ start_link(VHost, Opts) ->
 
 init([VHost, Opts]) ->
     process_flag(trap_exit, true),
-    DBsRaw = gen_mod:get_opt(dbs, Opts, fun(A) -> A end, [{mnesia, []}]),
+    DBsRaw = gen_mod:get_opt(dbs, Opts),
     DBs = case lists:keysearch(mnesia, 1, DBsRaw) of
                false -> lists:append(DBsRaw, [{mnesia,[]}]);
                {value, _} -> DBsRaw
           end,
-    VHostDB = gen_mod:get_opt(vhosts, Opts, fun(A) -> A end, [{VHost, mnesia}]),
+    VHostDB = gen_mod:get_opt(vhosts, Opts),
     % 10 is default because of using in clustered environment
-    PollUsersSettings = gen_mod:get_opt(poll_users_settings, Opts, fun(A) -> A end, 10),
+    PollUsersSettings = gen_mod:get_opt(poll_users_settings, Opts),
 
     {DBName, DBOpts} =
          case lists:keysearch(VHost, 1, VHostDB) of
@@ -139,11 +140,11 @@ init([VHost, Opts]) ->
                 dbopts=DBOpts,
                 % dbs used for convert messages from one backend to other
                 dbs=DBs,
-                dolog_default=gen_mod:get_opt(dolog_default, Opts, fun(A) -> A end, true),
-                drop_messages_on_user_removal=gen_mod:get_opt(drop_messages_on_user_removal, Opts, fun(A) -> A end, true),
-                ignore_jids=gen_mod:get_opt(ignore_jids, Opts, fun(A) -> A end, []),
-                groupchat=gen_mod:get_opt(groupchat, Opts, fun(A) -> A end, none),
-                purge_older_days=gen_mod:get_opt(purge_older_days, Opts, fun(A) -> A end, never),
+                dolog_default=gen_mod:get_opt(dolog_default, Opts),
+                drop_messages_on_user_removal=gen_mod:get_opt(drop_messages_on_user_removal, Opts),
+                ignore_jids=gen_mod:get_opt(ignore_jids, Opts),
+                groupchat=gen_mod:get_opt(groupchat, Opts),
+                purge_older_days=gen_mod:get_opt(purge_older_days, Opts),
                 poll_users_settings=PollUsersSettings}}.
 
 cleanup(#state{vhost=VHost} = _State) ->
@@ -191,6 +192,22 @@ get_commands_spec() ->
             module = ?MODULE, function = copy_messages_ctl,
             args = [{host, binary}, {backend, binary}, {date, binary}],
             result = {res, rescode}}].
+
+mod_options(Host) ->
+    [{dbs, [{mnesia, []}]},
+     {vhosts, [{Host, mnesia}]},
+     {poll_users_settings, 10},
+     {dolog_default, true},
+     {drop_messages_on_user_removal, true},
+     {ignore_jids, []},
+     {groupchat, none},
+     {purge_older_days, never}].
+
+mod_doc() ->
+    #{desc =>
+           <<"This module adds support for "
+             "logging user messages into database "
+             "(mnesia, mysql, pgsql are now supported)">>}.
 
 mod_opt_type(dbs) ->
     fun (A) when is_list(A) -> A end;
