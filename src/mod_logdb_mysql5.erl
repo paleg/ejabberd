@@ -99,11 +99,11 @@ stop(VHost) ->
 init([VHost, Opts]) ->
    crypto:start(),
 
-   Server = gen_mod:get_opt(server, Opts, fun(A) -> A end, <<"localhost">>),
-   Port = gen_mod:get_opt(port, Opts, fun(A) -> A end, 3306),
-   DB = gen_mod:get_opt(db, Opts, fun(A) -> A end, <<"logdb">>),
-   User = gen_mod:get_opt(user, Opts, fun(A) -> A end, <<"root">>),
-   Password = gen_mod:get_opt(password, Opts, fun(A) -> A end, <<"">>),
+   Server = gen_logdb:get_opt(server, Opts, <<"localhost">>),
+   Port = gen_logdb:get_opt(port, Opts, 3306),
+   DB = gen_logdb:get_opt(db, Opts, <<"logdb">>),
+   User = gen_logdb:get_opt(user, Opts, <<"root">>),
+   Password = gen_logdb:get_opt(password, Opts, <<"">>),
 
    St = #state{vhost=VHost,
                server=Server, port=Port, db=DB,

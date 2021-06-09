@@ -127,7 +127,7 @@ init([VHost, Opts]) ->
                         ?WARNING_MSG("There is no such logging backend '~s' defined for '~s', switching to mnesia", [DBNameResult, VHost]),
                         {mnesia, []};
                       {value, {_, DBOptsResult}} ->
-                        {DBNameResult, DBOptsResult}
+                        {DBNameResult, maps:from_list(DBOptsResult)}
                  end
          end,
 

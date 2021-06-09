@@ -10,6 +10,8 @@
 
 -export([behaviour_info/1]).
 
+-export([get_opt/3]).
+
 behaviour_info(callbacks) ->
    [
     % called from handle_info(start, _)
@@ -160,3 +162,9 @@ behaviour_info(callbacks) ->
    ];
 behaviour_info(_) ->
    undefined.
+
+get_opt(Opt, Opts, Default) ->
+    try maps:get(Opt, Opts) of
+       Value -> Value
+       catch _:{badkey, _} -> Default
+    end.

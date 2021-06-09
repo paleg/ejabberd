@@ -101,12 +101,12 @@ stop(VHost) ->
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 init([VHost, Opts]) ->
-   Server = gen_mod:get_opt(server, Opts, fun(A) -> A end, <<"localhost">>),
-   DB = gen_mod:get_opt(db, Opts, fun(A) -> A end, <<"ejabberd_logdb">>),
-   User = gen_mod:get_opt(user, Opts, fun(A) -> A end, <<"root">>),
-   Port = gen_mod:get_opt(port, Opts, fun(A) -> A end, 5432),
-   Password = gen_mod:get_opt(password, Opts, fun(A) -> A end, <<"">>),
-   Schema = binary_to_list(gen_mod:get_opt(schema, Opts, fun(A) -> A end, <<"public">>)),
+   Server = gen_logdb:get_opt(server, Opts, <<"localhost">>),
+   DB = gen_logdb:get_opt(db, Opts, <<"ejabberd_logdb">>),
+   User = gen_logdb:get_opt(user, Opts, <<"root">>),
+   Port = gen_logdb:get_opt(port, Opts, 5432),
+   Password = gen_logdb:get_opt(password, Opts, <<"">>),
+   Schema = binary_to_list(gen_logdb:get_opt(schema, Opts, <<"public">>)),
 
    ?MYDEBUG("Starting pgsql backend for ~s", [VHost]),
 
